@@ -3,8 +3,14 @@
 	"type": "module",
 	"packageManager": "pnpm@10.16.1",
 	"exports": {
-		".": "./src/index.js",
-		"./util": "./src/util.js"
+		".": {
+			"types": "./src/index.d.ts",
+			"default": "./src/index.js"
+		},
+		"./util": {
+			"types": "./src/util.js",
+			"default": "./src/util.js"
+		}
 	},
 	"main": "./src/index.js",
 	"devDependencies": {
