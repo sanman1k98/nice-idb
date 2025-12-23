@@ -100,6 +100,19 @@ export class NiceIDB {
 		return new NiceIDBTransaction(this.#db.transaction(stores, mode, options));
 	}
 
+	/**
+	 * Convenience method to access a single object store.
+	 *
+	 * @param {string} name - Name of the object store.
+	 * @param {IDBTransactionMode} [mode] - The transaction mode to access the object store; defaults to "readonly".
+	 * @returns {NiceIDBObjectStore} The object store instance.
+	 */
+	store(name, mode) {
+		const tx = this.#db.transaction(name, mode);
+		const store = tx.objectStore(name);
+		return new NiceIDBObjectStore(store);
+	}
+
 	close() {
 		this.#db.close();
 	}
