@@ -87,25 +87,24 @@ export class NiceIDB {
 	}
 
 	/**
-	 * Get a transaction to chain promises onto.
+	 * Create a transaction instance.
 	 *
 	 * @example
 	 *
 	 * ```ts
-	 * const count = db.transaction('items').then((tx) => {
-	 *   const items = tx.getObjectStore('items');
-	 *   return await items.count();
-	 * });
-	 *
+	 * using tx = db.transaction('items');
+	 * const items = tx.store('items');
+	 * const count = await items.count();
 	 * ```
 	 *
 	 * @param {string | string[]} stores - Name of stores include in the scope of the transaction.
 	 * @param {IDBTransactionMode} [mode] - Defaults to "readonly"
 	 * @param {IDBTransactionOptions} [options] - Defaults to `{ durability: "default" }`
-	 * @returns {Promise<NiceIDBTransaction>} A Promise that resolves to a transaction instance.
+	 * @returns {NiceIDBTransaction} A transaction instance.
 	 */
-	async transaction(stores, mode, options) {
-		return new NiceIDBTransaction(this.#db.transaction(stores, mode, options));
+	transaction(stores, mode, options) {
+		const tx = this.#db.transaction(stores, mode, options);
+		return new NiceIDBTransaction(tx);
 	}
 
 	/**
