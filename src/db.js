@@ -43,6 +43,14 @@ export class NiceIDB {
 	}
 
 	/**
+	 * List of object stores in the database.
+	 * @see {@link IDBDatabase.prototype.objectStoreNames}
+	 */
+	get storeNames() {
+		return getStrings(this.#db.objectStoreNames);
+	}
+
+	/**
 	 * @param {keyof IDBDatabaseEventMap} type
 	 * @param {(this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any} listener
 	 * @param {boolean | AddEventListenerOptions} options
