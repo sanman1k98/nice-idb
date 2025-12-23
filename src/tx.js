@@ -66,7 +66,27 @@ export class NiceIDBTransaction {
 		return this.#tx.removeEventListener(type, listener, options);
 	}
 
+	/**
+	 * A method to explicitly commit the transaction. This is the same method
+	 * that will be called when a transaction is assigned to a variable declared
+	 * with `using`.
+	 *
+	 * @example
+	 *
+	 * ```ts
+	 * async function countAllRecords(db: NiceIDB): Promise<number> {
+	 *   const storeNames = db.storeNames;
+	 *   using tx = db.transaction(storeNames);
+	 *   const requests = storeNames.map((name) => tx.store(name).count());
+	 *   return Promise.all(requests).reduce((x, y) => x + y);
+	 * }
+	 * ```
+	 */
 	commit() {
+		this.#tx.commit();
+	}
+
+	[Symbol.dispose]() {
 		this.#tx.commit();
 	}
 
