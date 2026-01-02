@@ -8,6 +8,7 @@
 		"module": "esnext",
 		"moduleResolution": "bundler",
 
+		"allowJs": true,
 		"checkJs": true,
 		// Recommended Options
 		"strict": true,
