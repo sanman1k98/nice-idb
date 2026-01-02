@@ -2,10 +2,8 @@
 	// Visit https://aka.ms/tsconfig to read more about this file
 	"compilerOptions": {
 		"target": "esnext",
-		"jsx": "react-jsx",
 		"lib": ["dom", "esnext"],
-		"moduleDetection": "force",
-		// Environment Settings
+
 		// See also https://aka.ms/tsconfig/module
 		"module": "esnext",
 		"moduleResolution": "bundler",
