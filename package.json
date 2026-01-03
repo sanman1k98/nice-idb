@@ -24,7 +24,7 @@
 		}
 	},
 	"main": "./src/index.js",
-	"types": "./src/index.d.ts",
+	"types": "./types/index.d.ts",
 	"scripts": {
 		"lint": "eslint",
 		"build": "tsc -p tsconfig.types.json"
