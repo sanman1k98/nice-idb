@@ -1,10 +1,8 @@
-export { NiceIDBErrorInfo } from './util';
-
-export namespace NiceIDB {
+declare namespace NiceIDB {
 	export type Database = import('#internal').Database;
 	export type Transaction = import('#internal').Transaction;
 	export type ObjectStore = import('#internal').ObjectStore;
 	export type Index = import('#internal').Index;
 }
 
-export interface NiceIDBDatabase extends NiceIDB.Database { };
+declare interface NiceIDBDatabase extends NiceIDB.Database { };

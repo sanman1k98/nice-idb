@@ -1,9 +1,7 @@
+/** @import { NiceIDBErrorInfo } from '#types' */
 import { NiceIDBObjectStore } from './store.js';
 import { NiceIDBTransaction } from './tx.js';
 import { getStrings, promisify } from './util.js';
-
-/** @import { PickMethods, PickInstanceFields } from './types.d.ts' */
-/** @import { NiceIDBErrorInfo } from './util.js' */
 
 /**
  * @callback NiceIDBUpgradeCallback
@@ -14,8 +12,7 @@ import { getStrings, promisify } from './util.js';
  */
 
 /**
- * @implements {PickInstanceFields<IDBDatabase, 'name' | 'version'>}
- * @implements {PickMethods<IDBDatabase, 'close' | 'addEventListener' | 'removeEventListener'>}
+ * @implements {NiceIDBDatabase}
  */
 export class NiceIDB {
 	/** @type {IDBDatabase} */

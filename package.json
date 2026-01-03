@@ -2,9 +2,20 @@
 	"name": "nice-idb",
 	"type": "module",
 	"packageManager": "pnpm@10.16.1",
+	"imports": {
+		"#internal": {
+			"types": "./src/internal.d.ts"
+		},
+		"#types": {
+			"types": "./src/types.d.ts"
+		}
+	},
 	"exports": {
 		".": {
 			"default": "./src/index.js"
+		},
+		"./types": {
+			"types": "./src/types.d.js"
 		},
 		"./util": {
 			"types": "./src/util.js",

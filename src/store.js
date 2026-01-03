@@ -1,11 +1,8 @@
 import { NiceIDBIndex } from './idx.js';
 import { getAsyncIterableRecords, getStrings, promisify } from './util.js';
 
-/** @import { PickInstanceFields, PromisifyRequestMethods } from './types.d.ts' */
-
 /**
- * @implements {Omit<PickInstanceFields<IDBObjectStore>, 'indexNames'>}
- * @implements {Omit<PromisifyRequestMethods<IDBObjectStore>, 'openCursor' | 'openKeyCursor'>}
+ * @implements {NiceIDB.ObjectStore}
  */
 export class NiceIDBObjectStore {
 	/** @type {IDBObjectStore} */

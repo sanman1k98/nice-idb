@@ -1,12 +1,9 @@
+/** @import { NiceIDBErrorInfo } from '#types' */
 import { NiceIDBObjectStore } from './store.js';
 import { getStrings } from './util.js';
 
-/** @import { PickInstanceFields, PickMethods } from './types.d.ts' */
-/** @import { NiceIDBErrorInfo } from './util.js' */
-
 /**
- * @implements {Omit<PickInstanceFields<IDBTransaction>, 'objectStoreNames' | 'onerror' | 'oncomplete' | 'onabort'>}
- * @implements {Omit<PickMethods<IDBTransaction>, 'objectStore' | 'dispatchEvent'>}
+ * @implements {NiceIDB.Transaction}
  */
 export class NiceIDBTransaction {
 	/** @type {IDBTransaction} */

@@ -1,10 +1,7 @@
 import { getAsyncIterableRecords, promisify } from './util.js';
 
-/** @import { PickInstanceFields, PromisifyRequestMethods } from './types.d.ts' */
-
 /**
- * @implements {PickInstanceFields<IDBIndex>}
- * @implements {Omit<PromisifyRequestMethods<IDBIndex>, 'openCursor' | 'openKeyCursor'>}
+ * @implements {NiceIDB.Index}
  */
 export class NiceIDBIndex {
 	/** @type {IDBIndex} */
