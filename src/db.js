@@ -8,7 +8,7 @@ import { getStrings, promisify } from './util.js';
 /**
  * @callback NiceIDBUpgradeCallback
  * @param {NiceIDB} db - A database instance created from the result of the IDBOpenDBRequest.
- * @param {NiceIDBTransaction} tx - The transaction from the IDBOpenDBRequest.
+ * @param {NiceIDBTransaction} tx - Any "upgrade transaction" instance created from the IDBOpenDBRequest with the `mode` set to "versionchange".
  * @param {IDBVersionChangeEvent} event - A reference to the IDBVersionChangeEvent.
  * @returns {void | Promise<void>}
  */
