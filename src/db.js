@@ -10,7 +10,7 @@ import { getStrings, promisify } from './util.js';
  * @param {NiceIDB} db - A database instance created from the result of the IDBOpenDBRequest.
  * @param {NiceIDBTransaction} tx - The transaction from the IDBOpenDBRequest.
  * @param {IDBVersionChangeEvent} event - A reference to the IDBVersionChangeEvent.
- * @returns {void}
+ * @returns {void | Promise<void>}
  */
 
 /**
