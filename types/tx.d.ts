@@ -1,7 +1,8 @@
+/** @typedef {import('#types').Transaction} Transaction */
 /**
- * @implements {NiceIDB.Transaction}
+ * @implements {Transaction}
  */
-export class NiceIDBTransaction implements NiceIDB.Transaction {
+export class NiceIDBTransaction implements Transaction {
     /**
      * @param {IDBTransaction} tx - The transaction instance to wrap.
      */
@@ -62,5 +63,6 @@ export class NiceIDBTransaction implements NiceIDB.Transaction {
     [Symbol.dispose](): void;
     #private;
 }
+export type Transaction = import("#types").Transaction;
 import { NiceIDBObjectStore } from './store.js';
 //# sourceMappingURL=tx.d.ts.map

@@ -1,7 +1,8 @@
+/** @typedef {import('#types').ObjectStore} ObjectStore */
 /**
- * @implements {NiceIDB.ObjectStore}
+ * @implements {ObjectStore}
  */
-export class NiceIDBObjectStore implements NiceIDB.ObjectStore {
+export class NiceIDBObjectStore implements ObjectStore {
     /**
      * @param {IDBObjectStore} store - The object store instance to wrap.
      */
@@ -78,5 +79,6 @@ export class NiceIDBObjectStore implements NiceIDB.ObjectStore {
     [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
     #private;
 }
+export type ObjectStore = import("#types").ObjectStore;
 import { NiceIDBIndex } from './idx.js';
 //# sourceMappingURL=store.d.ts.map

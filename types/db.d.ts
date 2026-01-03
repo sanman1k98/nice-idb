@@ -1,3 +1,4 @@
+/** @typedef {import('#types').Database} Database */
 /**
  * @callback NiceIDBUpgradeCallback
  * @param {NiceIDB} db - A database instance created from the result of the IDBOpenDBRequest.
@@ -6,9 +7,9 @@
  * @returns {void | Promise<void>}
  */
 /**
- * @implements {NiceIDBDatabase}
+ * @implements {Database}
  */
-export class NiceIDB implements NiceIDBDatabase {
+export class NiceIDB implements Database {
     /**
      * Compare two keys.
      * @param {IDBValidKey} a
@@ -106,6 +107,7 @@ export class NiceIDB implements NiceIDBDatabase {
     [Symbol.dispose](): void;
     #private;
 }
+export type Database = import("#types").Database;
 export type NiceIDBUpgradeCallback = (db: NiceIDB, tx: NiceIDBTransaction, event: IDBVersionChangeEvent) => void | Promise<void>;
 import { NiceIDBObjectStore } from './store.js';
 import { NiceIDBTransaction } from './tx.js';

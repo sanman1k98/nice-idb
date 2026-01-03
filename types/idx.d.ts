@@ -1,7 +1,8 @@
+/** @typedef {import('#types').Index} Index */
 /**
- * @implements {NiceIDB.Index}
+ * @implements {Index}
  */
-export class NiceIDBIndex implements NiceIDB.Index {
+export class NiceIDBIndex implements Index {
     /** @param {IDBIndex} idx */
     constructor(idx: IDBIndex);
     /** @type {string | string[]} */
@@ -41,4 +42,5 @@ export class NiceIDBIndex implements NiceIDB.Index {
     [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
     #private;
 }
+export type Index = import("#types").Index;
 //# sourceMappingURL=idx.d.ts.map
