@@ -1,6 +1,6 @@
 import antfu from '@antfu/eslint-config';
 
-export default antfu({
+const base = antfu({
 	type: 'lib',
 	typescript: true,
 	stylistic: {
@@ -12,3 +12,9 @@ export default antfu({
 		},
 	},
 });
+
+export default base
+	.append({
+		name: 'user/generated/ignores',
+		ignores: ['./types/'],
+	});
