@@ -27,8 +27,7 @@
 	"types": "./src/index.d.ts",
 	"scripts": {
 		"lint": "eslint",
-		"build": "tsc -p tsconfig.types.json",
-		"prepare": "pnpm build"
+		"build": "tsc -p tsconfig.types.json"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^6.7.3",
