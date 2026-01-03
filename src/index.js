@@ -7,3 +7,10 @@
  */
 
 export { NiceIDB } from './db.js';
+export {
+	getAsyncIterableRecords,
+	isNiceIDBError,
+	keyRange,
+	parseError,
+	promisify,
+} from './util.js';
