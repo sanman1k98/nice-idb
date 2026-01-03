@@ -1,0 +1,112 @@
+/**
+ * @callback NiceIDBUpgradeCallback
+ * @param {NiceIDB} db - A database instance created from the result of the IDBOpenDBRequest.
+ * @param {NiceIDBTransaction} tx - Any "upgrade transaction" instance created from the IDBOpenDBRequest with the `mode` set to "versionchange".
+ * @param {IDBVersionChangeEvent} event - A reference to the IDBVersionChangeEvent.
+ * @returns {void | Promise<void>}
+ */
+/**
+ * @implements {NiceIDBDatabase}
+ */
+export class NiceIDB implements NiceIDBDatabase {
+    /**
+     * Compare two keys.
+     * @param {IDBValidKey} a
+     * @param {IDBValidKey} b
+     * @returns {-1 | 0 | 1} Comparison result.
+     * @see {@link window.indexedDB.cmp}
+     */
+    static compare(a: IDBValidKey, b: IDBValidKey): -1 | 0 | 1;
+    /**
+     * Get the names and versions of all available databases.
+     * @see {@link window.indexedDB.databases}
+     */
+    static databases(): Promise<IDBDatabaseInfo[]>;
+    /**
+     * Delete a database.
+     * @param {string} name
+     * @returns {Promise<null>} A Promise that resolves to `null` if successful.
+     */
+    static delete(name: string): Promise<null>;
+    /**
+     * Open a database.
+     * @param {string} name - Name of the database.
+     * @param {number} [version] - A positive integer. If ommitted and the database already exists, this method will open a connection to it.
+     * @param {NiceIDBUpgradeCallback} [upgradeHandler] - An optional callback to handle the "upgradeneeded" event.
+     * @returns {Promise<NiceIDB>} A Promise that resolves to a database instance.
+     */
+    static open(name: string, version?: number, upgradeHandler?: NiceIDBUpgradeCallback): Promise<NiceIDB>;
+    /**
+     * @param {IDBDatabase} db - The database instance to wrap.
+     */
+    constructor(db: IDBDatabase);
+    /** @type {string} */
+    name: string;
+    /** @type {number} */
+    version: number;
+    /**
+     * List of object stores in the database.
+     * @see {@link IDBDatabase.prototype.objectStoreNames}
+     */
+    get stores(): readonly string[];
+    /**
+     * List of object stores in the database.
+     * @see {@link IDBDatabase.prototype.objectStoreNames}
+     */
+    get storeNames(): readonly string[];
+    /**
+     * @param {keyof IDBDatabaseEventMap} type
+     * @param {(this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any} listener
+     * @param {boolean | AddEventListenerOptions} options
+     */
+    addEventListener(type: keyof IDBDatabaseEventMap, listener: (this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any, options: boolean | AddEventListenerOptions): void;
+    /**
+     * @param {keyof IDBDatabaseEventMap} type
+     * @param {(this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any} listener
+     * @param {boolean | EventListenerOptions} options
+     */
+    removeEventListener(type: keyof IDBDatabaseEventMap, listener: (this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any, options: boolean | EventListenerOptions): void;
+    /**
+     * Create a new object store.
+     * @param {string} name
+     * @param {IDBObjectStoreParameters} [options]
+     * @returns {NiceIDBObjectStore} An object store instance.
+     */
+    createObjectStore(name: string, options?: IDBObjectStoreParameters): NiceIDBObjectStore;
+    /**
+     * @param {string} name
+     */
+    deleteObjectStore(name: string): void;
+    /**
+     * Create a transaction instance.
+     *
+     * @example
+     *
+     * ```ts
+     * using tx = db.transaction('items');
+     * const items = tx.store('items');
+     * const count = await items.count();
+     * ```
+     *
+     * @param {string | string[]} stores - Name of stores include in the scope of the transaction.
+     * @param {IDBTransactionMode} [mode] - Defaults to "readonly"
+     * @param {IDBTransactionOptions} [options] - Defaults to `{ durability: "default" }`
+     * @returns {NiceIDBTransaction} A transaction instance.
+     */
+    transaction(stores: string | string[], mode?: IDBTransactionMode, options?: IDBTransactionOptions): NiceIDBTransaction;
+    /**
+     * Convenience method to access a single object store.
+     *
+     * @param {string} name - Name of the object store.
+     * @param {IDBTransactionMode} [mode] - The transaction mode to access the object store; defaults to "readonly".
+     * @returns {NiceIDBObjectStore} The object store instance.
+     */
+    store(name: string, mode?: IDBTransactionMode): NiceIDBObjectStore;
+    close(): void;
+    [Symbol.dispose](): void;
+    #private;
+}
+export type NiceIDBUpgradeCallback = (db: NiceIDB, tx: NiceIDBTransaction, event: IDBVersionChangeEvent) => void | Promise<void>;
+import { NiceIDBObjectStore } from './store.js';
+import { NiceIDBTransaction } from './tx.js';
+//# sourceMappingURL=db.d.ts.map
