@@ -160,10 +160,10 @@ export class NiceIDB {
 	 * Open a database.
 	 * @param {string} name - Name of the database.
 	 * @param {number} [version] - A positive integer. If ommitted and the database already exists, this method will open a connection to it.
-	 * @param {NiceIDBUpgradeCallback} [upgrade] - An optional callback to handle the "upgradeneeded" event.
+	 * @param {NiceIDBUpgradeCallback} [upgradeHandler] - An optional callback to handle the "upgradeneeded" event.
 	 * @returns {Promise<NiceIDB>} A Promise that resolves to a database instance.
 	 */
-	static async open(name, version, upgrade) {
+	static async open(name, version, upgradeHandler) {
 		/** @type {IDBOpenDBRequest} */
 		const request = window.indexedDB.open(name, version);
 		/** @type {(event: IDBVersionChangeEvent) => void} */
@@ -171,11 +171,11 @@ export class NiceIDB {
 		/** @type {NiceIDB} */
 		let db;
 
-		if (upgrade) {
+		if (upgradeHandler) {
 			handleUpgrade = (event) => {
 				db = new NiceIDB(request.result);
 				const tx = new NiceIDBTransaction(/** @type {IDBTransaction} */(request.transaction));
-				upgrade(db, tx, event);
+				upgradeHandler(db, tx, event);
 			};
 			request.addEventListener('upgradeneeded', handleUpgrade);
 		}
