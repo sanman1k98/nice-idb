@@ -4,7 +4,6 @@
 	"packageManager": "pnpm@10.16.1",
 	"exports": {
 		".": {
-			"types": "./src/index.d.ts",
 			"default": "./src/index.js"
 		},
 		"./util": {
