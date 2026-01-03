@@ -1,8 +1,10 @@
 import { NiceIDBIndex } from './idx.js';
 import { getAsyncIterableRecords, getStrings, promisify } from './util.js';
 
+/** @typedef {import('#types').ObjectStore} ObjectStore */
+
 /**
- * @implements {NiceIDB.ObjectStore}
+ * @implements {ObjectStore}
  */
 export class NiceIDBObjectStore {
 	/** @type {IDBObjectStore} */

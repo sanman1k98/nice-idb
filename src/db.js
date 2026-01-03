@@ -1,7 +1,9 @@
-/** @import { NiceIDBErrorInfo } from '#types' */
+/** @import { NiceIDBErrorInfo } from './util.js' */
 import { NiceIDBObjectStore } from './store.js';
 import { NiceIDBTransaction } from './tx.js';
 import { getStrings, promisify } from './util.js';
+
+/** @typedef {import('#types').Database} Database */
 
 /**
  * @callback NiceIDBUpgradeCallback
@@ -12,7 +14,7 @@ import { getStrings, promisify } from './util.js';
  */
 
 /**
- * @implements {NiceIDBDatabase}
+ * @implements {Database}
  */
 export class NiceIDB {
 	/** @type {IDBDatabase} */

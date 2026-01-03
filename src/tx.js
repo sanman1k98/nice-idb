@@ -1,9 +1,11 @@
-/** @import { NiceIDBErrorInfo } from '#types' */
+/** @import { NiceIDBErrorInfo } from './util.js' */
 import { NiceIDBObjectStore } from './store.js';
 import { getStrings } from './util.js';
 
+/** @typedef {import('#types').Transaction} Transaction */
+
 /**
- * @implements {NiceIDB.Transaction}
+ * @implements {Transaction}
  */
 export class NiceIDBTransaction {
 	/** @type {IDBTransaction} */

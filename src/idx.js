@@ -1,7 +1,9 @@
 import { getAsyncIterableRecords, promisify } from './util.js';
 
+/** @typedef {import('#types').Index} Index */
+
 /**
- * @implements {NiceIDB.Index}
+ * @implements {Index}
  */
 export class NiceIDBIndex {
 	/** @type {IDBIndex} */
