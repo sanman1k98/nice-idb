@@ -1,0 +1,15 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"declaration": true,
+		"declarationDir": "types",
+		"declarationMap": true,
+		"emitDeclarationOnly": true,
+		"noEmit": false,
+		"noEmitOnError": true,
+		"stripInternal": true,
+		"listEmittedFiles": true
+	},
+	"include": ["src/*"]
+}
