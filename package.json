@@ -12,13 +12,14 @@
 	},
 	"exports": {
 		".": {
+			"types": "./types/index.d.ts",
 			"default": "./src/index.js"
 		},
 		"./types": {
 			"types": "./src/types.d.js"
 		},
 		"./util": {
-			"types": "./src/util.js",
+			"types": "./types/util.d.js",
 			"default": "./src/util.js"
 		}
 	},
