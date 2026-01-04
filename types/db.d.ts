@@ -7,6 +7,23 @@
  * @returns {void | Promise<void>}
  */
 /**
+ * Manage and connect to indexedDB databases.
+ *
+ * ```ts
+ * import { NiceIDB } from 'nice-idb';
+ *
+ * // Open a connection a database with a callback to define its structure.
+ * const db = await NiceIDB.open('database', 1, (db) => {
+ *   const store = db.createObjectStore('messages', { autoincrement: true });
+ *   store.createIndex('message', 'message', { unique: false });
+ * });
+ *
+ * // Convenience method to create a transaction and access an object store.
+ * const messages = db.store('messages', 'readwrite');
+ * // Make request to add a value.
+ * await messages.add({ message: 'Hello world!' });
+ * ```
+ *
  * @implements {Database}
  */
 export class NiceIDB implements Database {
@@ -20,6 +37,7 @@ export class NiceIDB implements Database {
     static compare(a: IDBValidKey, b: IDBValidKey): -1 | 0 | 1;
     /**
      * Get the names and versions of all available databases.
+     * @returns {Promise<IDBDatabaseInfo[]>} A promise that resolves to the list of databases.
      * @see {@link window.indexedDB.databases}
      */
     static databases(): Promise<IDBDatabaseInfo[]>;
@@ -47,6 +65,7 @@ export class NiceIDB implements Database {
     version: number;
     /**
      * List of object stores in the database.
+     * @deprecated Use `NiceIDB.prototype.storeNames` instead.
      * @see {@link IDBDatabase.prototype.objectStoreNames}
      */
     get stores(): readonly string[];
