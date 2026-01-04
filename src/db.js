@@ -52,6 +52,7 @@ export class NiceIDB {
 
 	/**
 	 * List of object stores in the database.
+	 * @deprecated Use `NiceIDB.prototype.storeNames` instead.
 	 * @see {@link IDBDatabase.prototype.objectStoreNames}
 	 */
 	get stores() {
