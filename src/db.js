@@ -158,6 +158,7 @@ export class NiceIDB {
 
 	/**
 	 * Get the names and versions of all available databases.
+	 * @returns {Promise<IDBDatabaseInfo[]>} A promise that resolves to the list of databases.
 	 * @see {@link window.indexedDB.databases}
 	 */
 	static async databases() {
