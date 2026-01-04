@@ -14,6 +14,23 @@ import { getStrings, promisify } from './util.js';
  */
 
 /**
+ * Manage and connect to indexedDB databases.
+ *
+ * ```ts
+ * import { NiceIDB } from 'nice-idb';
+ *
+ * // Open a connection a database with a callback to define its structure.
+ * const db = await NiceIDB.open('database', 1, (db) => {
+ *   const store = db.createObjectStore('messages', { autoincrement: true });
+ *   store.createIndex('message', 'message', { unique: false });
+ * });
+ *
+ * // Convenience method to create a transaction and access an object store.
+ * const messages = db.store('messages', 'readwrite');
+ * // Make request to add a value.
+ * await messages.add({ message: 'Hello world!' });
+ * ```
+ *
  * @implements {Database}
  */
 export class NiceIDB {
