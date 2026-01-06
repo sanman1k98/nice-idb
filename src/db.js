@@ -152,10 +152,11 @@ export class NiceIDB {
 	 *
 	 * @param {string} name - Name of the object store.
 	 * @param {IDBTransactionMode} [mode] - The transaction mode to access the object store; defaults to "readonly".
+	 * @param {IDBTransactionOptions} [opts] - Defaults to `{ durability: "default" }`
 	 * @returns {NiceIDBObjectStore} The object store instance.
 	 */
-	store(name, mode) {
-		const tx = this.#db.transaction(name, mode);
+	store(name, mode, opts) {
+		const tx = this.#db.transaction(name, mode, opts);
 		const store = tx.objectStore(name);
 		return new NiceIDBObjectStore(store);
 	}
