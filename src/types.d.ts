@@ -46,7 +46,7 @@ export type Transaction = Omit<IDBTransaction, 'db', 'objectStoreNames' | 'onerr
 
 export type ObjectStore
 	= & Omit<PromisifyRequestMethods<IDBObjectStore>, 'openCursor' | 'openKeyCursor'>
-		& Omit<IDBObjectStoreProps, 'indexNames'>;
+		& Omit<IDBObjectStoreProps, 'indexNames' | 'transaction'>;
 
 export type Index
 	= & Omit<PromisifyRequestMethods<IDBIndex>, 'openCursor' | 'openKeyCursor'>

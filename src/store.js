@@ -10,16 +10,12 @@ import { getAsyncIterableRecords, getStrings, promisify } from './util.js';
 export class NiceIDBObjectStore {
 	/** @type {IDBObjectStore} */
 	#store;
-	/** @type {IDBTransaction} */
-	transaction;
 
 	/**
 	 * @param {IDBObjectStore} store - The object store instance to wrap.
 	 */
 	constructor(store) {
 		this.#store = store;
-
-		this.transaction = store.transaction;
 	}
 
 	/**
