@@ -6,6 +6,7 @@ import { getStrings } from './util.js';
 
 /**
  * @implements {Transaction}
+ * @implements {Disposable}
  */
 export class NiceIDBTransaction {
 	/** @type {IDBTransaction} */

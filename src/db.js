@@ -32,6 +32,7 @@ import { getStrings, promisify } from './util.js';
  * ```
  *
  * @implements {Database}
+ * @implements {Disposable}
  */
 export class NiceIDB {
 	/** @type {IDBDatabase} */
