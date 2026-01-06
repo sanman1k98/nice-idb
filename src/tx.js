@@ -11,14 +11,31 @@ import { getStrings } from './util.js';
 export class NiceIDBTransaction {
 	/** @type {IDBTransaction} */
 	#tx;
-	/** @type {Promise<void> | null} */
-	#promise = null;
+	/** @type {Promise<Event>} */
+	#event;
+	/** @type {boolean} */
+	#finished;
 
 	/**
 	 * @param {IDBTransaction} tx - The transaction instance to wrap.
 	 */
 	constructor(tx) {
 		this.#tx = tx;
+		this.#finished = false;
+
+		this.#event = new Promise((resolve) => {
+			/** @satisfies {EventListener} */
+			const handleEvent = (event) => {
+				resolve(event);
+				this.#finished = true;
+				tx.removeEventListener('complete', handleEvent);
+				tx.removeEventListener('abort', handleEvent);
+			};
+
+			const opts = { once: true, passive: true };
+			tx.addEventListener('complete', handleEvent, opts);
+			tx.addEventListener('abort', handleEvent, opts);
+		});
 	}
 
 	get durability() {
@@ -27,6 +44,13 @@ export class NiceIDBTransaction {
 
 	get mode() {
 		return this.#tx.mode;
+	}
+
+	/**
+	 * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
+	 */
+	get finished() {
+		return this.#finished;
 	}
 
 	/**
@@ -109,38 +133,17 @@ export class NiceIDBTransaction {
 	/**
 	 * @returns {Promise<void>} A Promise that resolves when the transaction's "complete" event fires.
 	 */
-	promise() {
-		this.#promise ??= new Promise((resolve, reject) => {
-			/** @satisfies {AddEventListenerOptions} */
-			const opts = { once: true };
-			/** @type {() => void} */
-			let unlisten;
+	async promise() {
+		return this.#event.then((event) => {
+			if (event.type === 'complete')
+				return Promise.resolve();
 
-			const handleSuccess = () => {
-				unlisten();
-				resolve();
-			};
-
-			/** @type {EventListener} */
-			const handleFailure = (event) => {
-				unlisten();
-				const { error } = this.#tx;
-				const [transaction, request, source] = [this.#tx, null, null];
-				/** @satisfies {NiceIDBErrorInfo} */
-				const cause = { event, error, transaction, request, source };
-				reject(new Error('Transaction failed', { cause }));
-			};
-
-			unlisten = () => {
-				this.#tx.removeEventListener('complete', handleSuccess);
-				this.#tx.removeEventListener('abort', handleFailure);
-			};
-
-			this.#tx.addEventListener('success', handleSuccess, opts);
-			this.#tx.addEventListener('abort', handleFailure, opts);
+			const { error } = this.#tx;
+			const [transaction, request, source] = [this.#tx, null, null];
+			/** @satisfies {NiceIDBErrorInfo} */
+			const cause = { event, error, transaction, request, source };
+			return Promise.reject(new Error('Transaction aborted', { cause }));
 		});
-
-		return this.#promise;
 	}
 
 	done() {
