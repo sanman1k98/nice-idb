@@ -31,9 +31,18 @@ export class NiceIDBTransaction {
 
 	/**
 	 * List of stores in the scope of this transaction.
+	 * @deprecated
 	 * @see {@link IDBTransaction.prototype.objectStoreNames}
 	 */
 	get stores() {
+		return getStrings(this.#tx.objectStoreNames);
+	}
+
+	/**
+	 * List of stores in the scope of this transaction.
+	 * @see {@link IDBTransaction.prototype.objectStoreNames}
+	 */
+	get storeNames() {
 		return getStrings(this.#tx.objectStoreNames);
 	}
 

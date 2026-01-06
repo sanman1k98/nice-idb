@@ -24,6 +24,7 @@ export class NiceIDBObjectStore {
 
 	/**
 	 * List of index names for this store.
+	 * @deprecated
 	 * @see {@link IDBObjectStore.prototype.indexNames}
 	 */
 	get indexes() {
@@ -40,6 +41,14 @@ export class NiceIDBObjectStore {
 
 	get name() {
 		return this.#store.name;
+	}
+
+	/**
+	 * List of index names for this store.
+	 * @see {@link IDBObjectStore.prototype.indexNames}
+	 */
+	get indexNames() {
+		return getStrings(this.#store.indexNames);
 	}
 
 	/**
