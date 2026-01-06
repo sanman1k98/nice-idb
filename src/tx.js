@@ -14,8 +14,6 @@ export class NiceIDBTransaction {
 	/** @type {Promise<void> | null} */
 	#promise = null;
 
-	/** @type {IDBDatabase} */
-	db;
 	/** @type {IDBTransactionDurability} */
 	durability;
 	/** @type {IDBTransactionMode} */
@@ -27,7 +25,6 @@ export class NiceIDBTransaction {
 	constructor(tx) {
 		this.#tx = tx;
 
-		this.db = tx.db;
 		this.durability = tx.durability;
 		this.mode = tx.mode;
 	}

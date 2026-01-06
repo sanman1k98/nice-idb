@@ -42,7 +42,7 @@ type PromisifyRequestMethods<
 
 export type Database = Pick<IDBDatabase, 'name' | 'version' | 'close' | 'addEventListener' | 'removeEventListener'>;
 
-export type Transaction = Omit<IDBTransaction, 'objectStoreNames' | 'onerror' | 'oncomplete' | 'onabort' | 'objectStore' | 'dispatchEvent'>;
+export type Transaction = Omit<IDBTransaction, 'db', 'objectStoreNames' | 'onerror' | 'oncomplete' | 'onabort' | 'objectStore' | 'dispatchEvent'>;
 
 export type ObjectStore
 	= & Omit<PromisifyRequestMethods<IDBObjectStore>, 'openCursor' | 'openKeyCursor'>
@@ -50,4 +50,4 @@ export type ObjectStore
 
 export type Index
 	= & Omit<PromisifyRequestMethods<IDBIndex>, 'openCursor' | 'openKeyCursor'>
-		& IDBIndexProps;
+		& Omit<IDBIndexProps, 'objectStore'>;

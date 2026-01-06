@@ -15,8 +15,6 @@ export class NiceIDBIndex {
 	multiEntry;
 	/** @type {string} */
 	name;
-	/** @type {IDBObjectStore} */
-	objectStore;
 	/** @type {boolean} */
 	unique;
 
@@ -27,7 +25,6 @@ export class NiceIDBIndex {
 		this.keyPath = idx.keyPath;
 		this.multiEntry = idx.multiEntry;
 		this.name = idx.name;
-		this.objectStore = idx.objectStore;
 		this.unique = idx.unique;
 	}
 
