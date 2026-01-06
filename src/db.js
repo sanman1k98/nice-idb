@@ -94,12 +94,32 @@ export class NiceIDB {
 	 * @param {IDBObjectStoreParameters} [options]
 	 * @returns {NiceIDBObjectStore} An object store instance.
 	 */
+	createStore(name, options) {
+		const store = this.#db.createObjectStore(name, options);
+		return new NiceIDBObjectStore(store);
+	}
+
+	/**
+	 * @param {string} name
+	 */
+	deleteStore(name) {
+		return this.#db.deleteObjectStore(name);
+	}
+
+	/**
+	 * Create a new object store.
+	 * @deprecated
+	 * @param {string} name
+	 * @param {IDBObjectStoreParameters} [options]
+	 * @returns {NiceIDBObjectStore} An object store instance.
+	 */
 	createObjectStore(name, options) {
 		const store = this.#db.createObjectStore(name, options);
 		return new NiceIDBObjectStore(store);
 	}
 
 	/**
+	 * @deprecated
 	 * @param {string} name
 	 */
 	deleteObjectStore(name) {
