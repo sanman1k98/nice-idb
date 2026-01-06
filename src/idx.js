@@ -4,6 +4,7 @@ import { getAsyncIterableRecords, promisify } from './util.js';
 
 /**
  * @implements {Index}
+ * @implements {AsyncIterable<IDBCursorWithValue>}
  */
 export class NiceIDBIndex {
 	/** @type {IDBIndex} */

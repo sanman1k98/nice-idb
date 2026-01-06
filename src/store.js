@@ -5,6 +5,7 @@ import { getAsyncIterableRecords, getStrings, promisify } from './util.js';
 
 /**
  * @implements {ObjectStore}
+ * @implements {AsyncIterable<IDBCursorWithValue>}
  */
 export class NiceIDBObjectStore {
 	/** @type {IDBObjectStore} */
