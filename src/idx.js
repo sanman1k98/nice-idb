@@ -9,23 +9,26 @@ import { getAsyncIterableRecords, promisify } from './util.js';
 export class NiceIDBIndex {
 	/** @type {IDBIndex} */
 	#idx;
-	/** @type {string | string[]} */
-	keyPath;
-	/** @type {boolean} */
-	multiEntry;
-	/** @type {string} */
-	name;
-	/** @type {boolean} */
-	unique;
 
 	/** @param {IDBIndex} idx */
 	constructor(idx) {
 		this.#idx = idx;
+	}
 
-		this.keyPath = idx.keyPath;
-		this.multiEntry = idx.multiEntry;
-		this.name = idx.name;
-		this.unique = idx.unique;
+	get keyPath() {
+		return this.#idx.keyPath;
+	}
+
+	get multiEntry() {
+		return this.#idx.multiEntry;
+	}
+
+	get name() {
+		return this.#idx.name;
+	}
+
+	get unique() {
+		return this.#idx.unique;
 	}
 
 	/** @param {IDBValidKey | IDBKeyRange} [query] */

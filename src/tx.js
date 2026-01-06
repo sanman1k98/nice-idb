@@ -14,19 +14,19 @@ export class NiceIDBTransaction {
 	/** @type {Promise<void> | null} */
 	#promise = null;
 
-	/** @type {IDBTransactionDurability} */
-	durability;
-	/** @type {IDBTransactionMode} */
-	mode;
-
 	/**
 	 * @param {IDBTransaction} tx - The transaction instance to wrap.
 	 */
 	constructor(tx) {
 		this.#tx = tx;
+	}
 
-		this.durability = tx.durability;
-		this.mode = tx.mode;
+	get durability() {
+		return this.#tx.durability;
+	}
+
+	get mode() {
+		return this.#tx.mode;
 	}
 
 	/**
