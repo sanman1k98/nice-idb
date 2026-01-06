@@ -37,18 +37,20 @@ import { getStrings, promisify } from './util.js';
 export class NiceIDB {
 	/** @type {IDBDatabase} */
 	#db;
-	/** @type {string} */
-	name;
-	/** @type {number} */
-	version;
 
 	/**
 	 * @param {IDBDatabase} db - The database instance to wrap.
 	 */
 	constructor(db) {
 		this.#db = db;
-		this.name = db.name;
-		this.version = db.version;
+	}
+
+	get name() {
+		return this.#db.name;
+	}
+
+	get version() {
+		return this.#db.version;
 	}
 
 	/**

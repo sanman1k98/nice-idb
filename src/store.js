@@ -10,12 +10,6 @@ import { getAsyncIterableRecords, getStrings, promisify } from './util.js';
 export class NiceIDBObjectStore {
 	/** @type {IDBObjectStore} */
 	#store;
-	/** @type {boolean} */
-	autoIncrement;
-	/** @type {string | string[] | null} */
-	keyPath;
-	/** @type {string} */
-	name;
 	/** @type {IDBTransaction} */
 	transaction;
 
@@ -25,9 +19,6 @@ export class NiceIDBObjectStore {
 	constructor(store) {
 		this.#store = store;
 
-		this.autoIncrement = store.autoIncrement;
-		this.keyPath = store.keyPath;
-		this.name = store.name;
 		this.transaction = store.transaction;
 	}
 
@@ -37,6 +28,18 @@ export class NiceIDBObjectStore {
 	 */
 	get indexes() {
 		return getStrings(this.#store.indexNames);
+	}
+
+	get autoIncrement() {
+		return this.#store.autoIncrement;
+	}
+
+	get keyPath() {
+		return this.#store.keyPath;
+	}
+
+	get name() {
+		return this.#store.name;
 	}
 
 	/**
