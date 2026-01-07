@@ -360,19 +360,17 @@ export class NiceIDB {
 	static async open(name, version, upgradeHandler) {
 		/** @type {IDBOpenDBRequest} */
 		const request = window.indexedDB.open(name, version);
-		/** @type {(event: IDBVersionChangeEvent) => void} */
-		let handleUpgrade;
 		/** @type {NiceIDB} */
 		let db;
 
-		if (upgradeHandler) {
-			handleUpgrade = (event) => {
-				db = new NiceIDB(request.result);
-				const tx = new NiceIDBTransaction(/** @type {IDBTransaction} */(request.transaction));
-				upgradeHandler(db, tx, event);
-			};
-			request.addEventListener('upgradeneeded', handleUpgrade);
-		}
+		/** @satisfies {((this: IDBOpenDBRequest, event: IDBVersionChangeEvent) => void)} */
+		const handleUpgrade = function (event) {
+			if (typeof upgradeHandler !== 'function')
+				throw new RangeError('Cannot open database without handling "upgradeneeded" event', { cause: event });
+			db = new NiceIDB(request.result);
+			const tx = new NiceIDBTransaction(/** @type {IDBTransaction} */(request.transaction));
+			upgradeHandler(db, tx, event);
+		};
 
 		return new Promise((resolve, reject) => {
 			/** @type {() => void} */
