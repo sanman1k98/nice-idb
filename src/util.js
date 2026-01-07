@@ -223,5 +223,5 @@ export async function* getAsyncIterableRecords(
 		}
 	};
 
-	return generator();
+	yield* generator();
 }
