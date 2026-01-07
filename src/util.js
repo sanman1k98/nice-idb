@@ -1,3 +1,15 @@
+const logMethods = /** @type {const} */(['log', 'info', 'warn', 'debug', 'error']);
+
+export const logger = new Proxy(console, {
+	get(o, k) {
+		const v = Reflect.get(o, k);
+		if (k in logMethods)
+			return (/** @type {any} */ ...args) => v('[nice-idb]', ...args);
+		else
+			return v;
+	},
+});
+
 /**
  * Get a regular list of strings from a DOMStringList.
  * @param {DOMStringList} list - A DOMStringList instance.
@@ -179,8 +191,8 @@ function maybeKeyRangeOptions(obj) {
 
 /**
  * Create an async iterable from the given source.
- * @template {boolean} [const T = true]
- * @template {IDBCursorWithValue | IDBCursor} [C = T extends true ? IDBCursorWithValue : IDBCursor];
+ * @template [const T = true]
+ * @template {IDBCursor} [C = T extends true ? IDBCursorWithValue : IDBCursor];
  * @param {IDBObjectStore | IDBIndex} source - An object that can open an {@link IDBCursor}.
  * @param {CursorOptions | undefined} [opts] - Customize the cursor.
  * @param {T} [withValues] - Set to false to open an IDBCursor.
