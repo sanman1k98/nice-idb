@@ -130,14 +130,15 @@ export class NiceIDBObjectStore {
 	}
 
 	/**
-	 * @param {import('./util').CursorOptions} opts
+	 * @param {import('./util').CursorOptions} [opts]
+	 * @returns {AsyncIterable<IDBCursorWithValue>} An AsyncIterable that returns an IDBCursorWithValue.
 	 */
 	async* iter(opts) {
 		yield* getAsyncIterableRecords(this.#store, opts, true);
 	}
 
 	/**
-	 * @param {import('./util').CursorOptions} opts
+	 * @param {import('./util').CursorOptions} [opts]
 	 */
 	async* iterKeys(opts) {
 		yield* getAsyncIterableRecords(this.#store, opts, false);
