@@ -31,6 +31,10 @@ import { getStrings, promisify } from './util.js';
  */
 
 /**
+ * @typedef {'ro' | 'rw' | 'readonly' | 'readwrite'} TransactionMode
+ */
+
+/**
  * Manage and connect to indexedDB databases.
  *
  * ```ts
@@ -155,11 +159,15 @@ export class NiceIDB {
 	 * ```
 	 *
 	 * @param {string | string[]} stores - Name of stores include in the scope of the transaction.
-	 * @param {IDBTransactionMode} [mode] - Defaults to "readonly"
+	 * @param {TransactionMode} [mode] - Defaults to "readonly"
 	 * @param {IDBTransactionOptions} [options] - Defaults to `{ durability: "default" }`
 	 * @returns {NiceIDBTransaction} A transaction instance.
 	 */
 	transaction(stores, mode, options) {
+		if (mode === 'ro')
+			mode = 'readonly';
+		else if (mode === 'rw')
+			mode = 'readwrite';
 		const tx = this.#db.transaction(stores, mode, options);
 		return new NiceIDBTransaction(tx);
 	}
@@ -168,11 +176,15 @@ export class NiceIDB {
 	 * Convenience method to access a single object store.
 	 *
 	 * @param {string} name - Name of the object store.
-	 * @param {IDBTransactionMode} [mode] - The transaction mode to access the object store; defaults to "readonly".
+	 * @param {TransactionMode} [mode] - The transaction mode to access the object store; defaults to "readonly".
 	 * @param {IDBTransactionOptions} [opts] - Defaults to `{ durability: "default" }`
 	 * @returns {NiceIDBObjectStore} The object store instance.
 	 */
 	store(name, mode, opts) {
+		if (mode === 'ro')
+			mode = 'readonly';
+		else if (mode === 'rw')
+			mode = 'readwrite';
 		const tx = this.#db.transaction(name, mode, opts);
 		const store = tx.objectStore(name);
 		return new NiceIDBObjectStore(store);
