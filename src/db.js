@@ -14,6 +14,23 @@ import { getStrings, promisify } from './util.js';
  */
 
 /**
+ *
+ * @callback DefineVersionChanges
+ * @param {number} version - The version number.
+ * @param {() => void | Promise<void>} changes - The changes to make for this version of the database.
+ * @returns {void}
+ */
+
+/**
+ * @callback DefineDatabaseVersions
+ * @param {DefineVersionChanges} defineVersion - A callback to define sets of changes to the database.
+ * @param {NiceIDB} db - A database instance.
+ * @param {NiceIDBTransaction} tx - The "upgrade transaction" instance.
+ * @param {IDBVersionChangeEvent} event - The `IDBVersionChangeEvent`.
+ * @returns {void | Promise<void>}
+ */
+
+/**
  * Manage and connect to indexedDB databases.
  *
  * ```ts
@@ -196,6 +213,129 @@ export class NiceIDB {
 	 */
 	static async delete(name) {
 		return promisify(window.indexedDB.deleteDatabase(name)).then(() => null);
+	}
+
+	/**
+	 * @param {string} name - The name of the database to define the schema for.
+	 * @param {DefineDatabaseVersions} defineVersions - A callback defining versions
+	 * @returns {Promise<NiceIDB>} The upgraded database instance.
+	 */
+	static async define(name, defineVersions) {
+		const { version: currentVersion = 0 }
+			= await window.indexedDB.databases()
+				.then(dbs => dbs.find(db => db.name === name))
+				?? { version: 0 };
+
+		/** @type {NiceIDB | undefined} */ let db;
+		/** @type {NiceIDBTransaction | undefined} */ let tx;
+		/** @type {IDBVersionChangeEvent | undefined} */ let event;
+
+		const dbProxy = new Proxy(Object.create(NiceIDB.prototype), {
+			get(_, prop) {
+				if (!db)
+					throw new Error('Can only use database within `defineVersion` callbacks');
+				const value = Reflect.get(db, prop);
+				if (typeof value === 'function')
+					return value.bind(db);
+			},
+		});
+
+		const txProxy = new Proxy(Object.create(NiceIDBTransaction.prototype), {
+			get(_, prop) {
+				if (!tx)
+					throw new Error('Can only use transaction within `defineVersion` callbacks');
+				const value = Reflect.get(tx, prop);
+				if (typeof value === 'function')
+					return value.bind(tx);
+			},
+		});
+
+		const eventProxy = new Proxy(Object.create(IDBVersionChangeEvent.prototype), {
+			get(_, prop) {
+				if (!event)
+					throw new Error('Can only use event within `defineVersion` callbacks');
+				return Reflect.get(event, prop);
+			},
+		});
+
+		/** @type {(() => void | Promise<void>)[]} */
+		const allChanges = [];
+		let highestVersion = 0;
+
+		/** @satisfies {DefineVersionChanges} */
+		const defineVersion = (version, changes) => {
+			highestVersion++;
+			if (version !== highestVersion)
+				throw new RangeError('Versions must be defined in-order and in increments of 1');
+			allChanges.push(changes);
+		};
+
+		// Invoke the callback given as an argument
+		// console.log(`Calling "defineVersions"`);
+		defineVersions(defineVersion, dbProxy, txProxy, eventProxy);
+
+		const versionDelta = highestVersion - currentVersion;
+
+		if (versionDelta < 0) {
+			throw new RangeError('Missing version changes; current version is higher than highest defined version', {
+				cause: { currentVersion, highestVersion },
+			});
+		}
+
+		const request = window.indexedDB.open(name, highestVersion);
+
+		return new Promise((resolve, reject) => {
+			/** @type {() => void} */
+			let unlisten;
+
+			/** @satisfies {((this: IDBOpenDBRequest, event: IDBVersionChangeEvent) => void) | undefined} */
+			const handleUpgrade = (versionDelta > 0 || undefined) && async function (ev) {
+				// Assign values to these variables so that the proxies can be used.
+				event = ev;
+				db = new NiceIDB(request.result);
+				tx = new NiceIDBTransaction(/** @type {IDBTransaction} */(request.transaction));
+
+				const pendingChanges = allChanges
+					.slice(currentVersion)
+					.map(async (cb, i) => {
+						return await new Promise(resolve => resolve(cb()))
+							.catch((error) => {
+								throw new Error('Failed to define version changes', {
+									cause: { version: i + 1, error },
+								});
+							});
+					});
+
+				await Promise.all(pendingChanges).catch(reject);
+			};
+
+			/** @satisfies {EventListener} */
+			const handleSuccess = () => {
+				unlisten();
+				resolve(db ?? new NiceIDB(request.result));
+			};
+
+			/** @satisfies {EventListener} */
+			const handleFailure = (event) => {
+				unlisten();
+				const { error, source, transaction } = request;
+				/** @satisfies {NiceIDBErrorInfo} */
+				const cause = { error, event, request, source, transaction };
+				reject(new Error('Failed to open database', { cause }));
+			};
+
+			unlisten = () => {
+				request.removeEventListener('success', handleSuccess);
+				request.removeEventListener('error', handleFailure);
+				request.removeEventListener('blocked', handleFailure);
+				handleUpgrade && request.removeEventListener('upgradeneeded', handleUpgrade);
+			};
+
+			request.addEventListener('success', handleSuccess);
+			request.addEventListener('error', handleFailure);
+			request.addEventListener('blocked', handleFailure);
+			handleUpgrade && request.addEventListener('upgradeneeded', handleUpgrade);
+		});
 	}
 
 	/**
