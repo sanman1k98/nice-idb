@@ -1,7 +1,7 @@
 /** @import { NiceIDBErrorInfo } from './util.js' */
 import { NiceIDBObjectStore } from './store.js';
 import { NiceIDBTransaction } from './tx.js';
-import { getStrings, promisify } from './util.js';
+import { getStrings, logger, promisify } from './util.js';
 
 /** @typedef {import('#types').Database} Database */
 
@@ -14,19 +14,28 @@ import { getStrings, promisify } from './util.js';
  */
 
 /**
- *
- * @callback DefineVersionChanges
- * @param {number} version - The version number.
- * @param {() => void | Promise<void>} changes - The changes to make for this version of the database.
+ * A callback that makes changes to the database like creating or deleting
+ * object stores and indexes.
+ * @callback UpgradeCallback
+ * @returns {void | Promise<void>}
+ */
+
+/**
+ * Defines the changes to the database for a specific version.
+ * @callback DefineVersionedUpgrade
+ * @param {number} versionNumber - A positive integer.
+ * @param {UpgradeCallback} upgrade - A callback which, within its
+ * scope, makes changes to the database.
  * @returns {void}
  */
 
 /**
- * @callback DefineDatabaseVersions
- * @param {DefineVersionChanges} defineVersion - A callback to define sets of changes to the database.
- * @param {NiceIDB} db - A database instance.
+ * Defines all versions of the database, starting from version 1.
+ * @callback DefineDatabaseSchema
+ * @param {DefineVersionedUpgrade} defineVersion - Use to define each version
+ * of the database by making changes to its schema.
+ * @param {NiceIDB} db - The database instance to upgraded.
  * @param {NiceIDBTransaction} tx - The "upgrade transaction" instance.
- * @param {IDBVersionChangeEvent} event - The `IDBVersionChangeEvent`.
  * @returns {void | Promise<void>}
  */
 
@@ -229,23 +238,20 @@ export class NiceIDB {
 
 	/**
 	 * @param {string} name - The name of the database to define the schema for.
-	 * @param {DefineDatabaseVersions} defineVersions - A callback defining versions
+	 * @param {DefineDatabaseSchema} defineSchema - A callback defining the database schema for each version of it.
 	 * @returns {Promise<NiceIDB>} The upgraded database instance.
 	 */
-	static async define(name, defineVersions) {
-		const { version: currentVersion = 0 }
-			= await window.indexedDB.databases()
-				.then(dbs => dbs.find(db => db.name === name))
-				?? { version: 0 };
-
+	static async define(name, defineSchema) {
+		// Declare variables for our instances.
 		/** @type {NiceIDB | undefined} */ let db;
 		/** @type {NiceIDBTransaction | undefined} */ let tx;
-		/** @type {IDBVersionChangeEvent | undefined} */ let event;
+
+		// Create proxies that will access our instances.
 
 		const dbProxy = new Proxy(Object.create(NiceIDB.prototype), {
 			get(_, prop) {
 				if (!db)
-					throw new Error('Can only use database within `defineVersion` callbacks');
+					throw new ReferenceError('Can only use database within `defineVersion` callbacks');
 				const value = Reflect.get(db, prop);
 				if (typeof value === 'function')
 					return value.bind(db);
@@ -255,70 +261,84 @@ export class NiceIDB {
 		const txProxy = new Proxy(Object.create(NiceIDBTransaction.prototype), {
 			get(_, prop) {
 				if (!tx)
-					throw new Error('Can only use transaction within `defineVersion` callbacks');
+					throw new ReferenceError('Can only use transaction within `defineVersion` callbacks');
 				const value = Reflect.get(tx, prop);
 				if (typeof value === 'function')
 					return value.bind(tx);
 			},
 		});
 
-		const eventProxy = new Proxy(Object.create(IDBVersionChangeEvent.prototype), {
-			get(_, prop) {
-				if (!event)
-					throw new Error('Can only use event within `defineVersion` callbacks');
-				return Reflect.get(event, prop);
-			},
-		});
+		/** @type {UpgradeCallback[]} */
+		const allUpgrades = [];
+		let highestDefinedVersion = 0;
 
-		/** @type {(() => void | Promise<void>)[]} */
-		const allChanges = [];
-		let highestVersion = 0;
-
-		/** @satisfies {DefineVersionChanges} */
-		const defineVersion = (version, changes) => {
-			highestVersion++;
-			if (version !== highestVersion)
-				throw new RangeError('Versions must be defined in-order and in increments of 1');
-			allChanges.push(changes);
+		/** @satisfies {DefineVersionedUpgrade} */
+		const defineVersion = (versionNumber, upgrade) => {
+			if (!Number.isInteger(versionNumber))
+				throw new TypeError('Expected integer for version number');
+			if (typeof upgrade !== 'function')
+				throw new TypeError('Expected function for upgrade callback', { cause: { type: typeof upgrade } });
+			if (versionNumber !== highestDefinedVersion + 1) {
+				throw new RangeError('Unexpected version number', {
+					cause: { expected: highestDefinedVersion + 1, received: versionNumber },
+				});
+			}
+			highestDefinedVersion++;
+			allUpgrades.push(upgrade);
 		};
 
-		// Invoke the callback given as an argument
-		// console.log(`Calling "defineVersions"`);
-		defineVersions(defineVersion, dbProxy, txProxy, eventProxy);
+		// Gather all the upgrade callbacks from each defined version.
 
-		const versionDelta = highestVersion - currentVersion;
+		try {
+			// Provide the database and transaction proxies as arguments.
+			defineSchema(defineVersion, dbProxy, txProxy);
+		} catch (error) {
+			if (('isError' in Error && Error.isError(error)) || error instanceof Error) {
+				throw new Error('Error defining schema', { cause: error });
+			} else {
+				throw new Error('Unknown error defining schema', { cause: error });
+			}
+		}
 
+		const existing = await window.indexedDB.databases()
+			.then(dbs => dbs.find(db => db.name === name));
+		const existingVersion = existing?.version ?? 0;
+		const versionDelta = highestDefinedVersion - existingVersion;
+
+		// Check that all the previous versions of the database have been defined.
 		if (versionDelta < 0) {
-			throw new RangeError('Missing version changes; current version is higher than highest defined version', {
-				cause: { currentVersion, highestVersion },
+			throw new Error('Current version is greater than highest defined version', {
+				cause: { existing: existingVersion, highestDefined: highestDefinedVersion },
 			});
 		}
 
-		const request = window.indexedDB.open(name, highestVersion);
+		// Make a request to open the latest version.
+		const request = window.indexedDB.open(name, highestDefinedVersion);
 
 		return new Promise((resolve, reject) => {
 			/** @type {() => void} */
 			let unlisten;
 
 			/** @satisfies {((this: IDBOpenDBRequest, event: IDBVersionChangeEvent) => void) | undefined} */
-			const handleUpgrade = (versionDelta > 0 || undefined) && async function (ev) {
-				// Assign values to these variables so that the proxies can be used.
-				event = ev;
+			const handleUpgrade = (versionDelta !== 0 || undefined) && async function () {
+				// Create the instances used by the proxies.
 				db = new NiceIDB(request.result);
 				tx = new NiceIDBTransaction(/** @type {IDBTransaction} */(request.transaction));
 
-				const pendingChanges = allChanges
-					.slice(currentVersion)
-					.map(async (cb, i) => {
-						return await new Promise(resolve => resolve(cb()))
-							.catch((error) => {
-								throw new Error('Failed to define version changes', {
-									cause: { version: i + 1, error },
-								});
-							});
-					});
+				const pendingUpgrades = allUpgrades.slice(existingVersion);
 
-				await Promise.all(pendingChanges).catch(reject);
+				for (const [i, callback] of pendingUpgrades.entries()) {
+					const version = i + 1;
+					const promise = new Promise(resolve => resolve(callback()));
+					logger.log('Executing versioned upgrade', version);
+					try {
+						await promise;
+					} catch (error) {
+						return reject(
+							new Error('Failed upgrade', { cause: { version, error } }),
+						);
+					}
+				}
 			};
 
 			/** @satisfies {EventListener} */
