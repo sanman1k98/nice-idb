@@ -84,6 +84,11 @@ export class NiceIDBObjectStore {
 		return promisify(this.#store.add(value, key));
 	}
 
+	/**
+	 * Clear all records from the store.
+	 *
+	 * @returns {Promise<undefined>}
+	 */
 	async clear() {
 		return promisify(this.#store.clear());
 	}
@@ -141,20 +146,50 @@ export class NiceIDBObjectStore {
 	}
 
 	/**
+	 * Traverse the store with an {@link IDBCursorWithValue} in a `for await ... of` loop.
+	 *
+	 * @example
+	 *
+	 * ```ts
+	 * const store = db.tx('store-name', 'readonly').store('store-name');
+	 * for await (const cursor of store.iter({ dir: 'prev' })) {
+	 *   const { key, value } = cursor;
+	 *   console.log(key, value);
+	 *   // `cursor.continue()` is automatically called.
+	 * }
+	 * ```
+	 *
 	 * @param {import('./util').CursorOptions} [opts]
-	 * @returns {AsyncIterable<IDBCursorWithValue>} An AsyncIterable that returns an IDBCursorWithValue.
+	 * @returns {AsyncIterable<IDBCursorWithValue>} The cursor instance.
 	 */
 	async* iter(opts) {
 		yield* getAsyncIterableRecords(this.#store, opts, true);
 	}
 
 	/**
+	 * Traverse the store's keys with an {@link IDBCursor} in a `for await ... of` loop.
+	 *
+	 * @see {@link NiceIDBObjectStore#iter}
+	 *
 	 * @param {import('./util').CursorOptions} [opts]
+	 * @returns {AsyncIterable<IDBCursor>} The cursor instance.
 	 */
 	async* iterKeys(opts) {
 		yield* getAsyncIterableRecords(this.#store, opts, false);
 	}
 
+	/**
+	 * Shortcut for {@link NiceIDBObjectStore#iter}.
+	 *
+	 * @example
+	 *
+	 * ```ts
+	 * for await (const cursor of db.tx('store-name', 'readonly').store('store-name')) {
+	 *   const { key, value } = cursor;
+	 *   console.log(key, value);
+	 * }
+	 * ```
+	 */
 	async* [Symbol.asyncIterator]() {
 		yield* getAsyncIterableRecords(this.#store);
 	}

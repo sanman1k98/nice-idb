@@ -111,6 +111,8 @@ export function parseError(error) {
 }
 
 /**
+ * Argument passed to {@link keyRange()} to create an {@link IDBKeyRange}.
+ *
  * @typedef {object} KeyRangeOptions
  * @property {IDBValidKey} [only] - A value to pass to {@link IDBKeyRange.only}.
  * @property {IDBValidKey} [gte] - Closed lower bound.
@@ -120,7 +122,15 @@ export function parseError(error) {
  */
 
 /**
- * Create an IDBKeyRange.
+ * Create an IDBKeyRange by specifying at least one of the following options:
+ * `only`, `gt`, `gte`, `lt`, `lte`.
+ *
+ * @example
+ *
+ * ```ts
+ * const keyRange = NiceIDB.keyRange({ gte: 'A', lte: 'F' });
+ * ```
+ *
  * @param {KeyRangeOptions} opts - Specify a single value or upper/lower bounds.
  * @returns {IDBKeyRange} An IDBKeyRange with the specified bounds.
  */
