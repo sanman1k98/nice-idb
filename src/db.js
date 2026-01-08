@@ -1,7 +1,7 @@
 /** @import { NiceIDBErrorInfo } from './util.js' */
 import { NiceIDBObjectStore } from './store.js';
 import { NiceIDBTransaction } from './tx.js';
-import { getStrings, logger, promisify } from './util.js';
+import { getStrings, promisify } from './util.js';
 
 /** @typedef {import('#types').Database} Database */
 
@@ -330,7 +330,6 @@ export class NiceIDB {
 				for (const [i, callback] of pendingUpgrades.entries()) {
 					const version = i + 1;
 					const promise = new Promise(resolve => resolve(callback()));
-					logger.log('Executing versioned upgrade', version);
 					try {
 						await promise;
 					} catch (error) {
