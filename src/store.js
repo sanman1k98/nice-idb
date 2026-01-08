@@ -66,6 +66,17 @@ export class NiceIDBObjectStore {
 	}
 
 	/**
+	 * Open a named index in the current store.
+	 *
+	 * @param {string} name
+	 * @returns {NiceIDBIndex} An object for accessing the index.
+	 */
+	index(name) {
+		const idx = this.#store.index(name);
+		return new NiceIDBIndex(idx);
+	}
+
+	/**
 	 * @param {any} value
 	 * @param {IDBValidKey} [key]
 	 */
