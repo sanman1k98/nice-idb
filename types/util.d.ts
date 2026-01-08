@@ -56,14 +56,15 @@ export function keyRange(opts: KeyRangeOptions): IDBKeyRange;
  */
 /**
  * Create an async iterable from the given source.
- * @template {boolean} [const T = true]
- * @template {IDBCursorWithValue | IDBCursor} [C = T extends true ? IDBCursorWithValue : IDBCursor];
+ * @template [const T = true]
+ * @template {IDBCursor} [C = T extends true ? IDBCursorWithValue : IDBCursor];
  * @param {IDBObjectStore | IDBIndex} source - An object that can open an {@link IDBCursor}.
  * @param {CursorOptions | undefined} [opts] - Customize the cursor.
  * @param {T} [withValues] - Set to false to open an IDBCursor.
  * @returns {AsyncGenerator<C>} An object to be used in a `await for...of` loop.
  */
-export function getAsyncIterableRecords<const T extends boolean = true, C extends IDBCursorWithValue | IDBCursor = T extends true ? IDBCursorWithValue : IDBCursor>(source: IDBObjectStore | IDBIndex, opts?: CursorOptions | undefined, withValues?: T, ...args: any[]): AsyncGenerator<C>;
+export function getAsyncIterableRecords<const T = true, C extends IDBCursor = T extends true ? IDBCursorWithValue : IDBCursor>(source: IDBObjectStore | IDBIndex, opts?: CursorOptions | undefined, withValues?: T, ...args: any[]): AsyncGenerator<C>;
+export const logger: Console;
 export type NiceIDBErrorInfo = {
     /**
      * - The event that caused the Promise to reject.

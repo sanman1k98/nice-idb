@@ -1,20 +1,15 @@
 /** @typedef {import('#types').Index} Index */
 /**
  * @implements {Index}
+ * @implements {AsyncIterable<IDBCursorWithValue>}
  */
-export class NiceIDBIndex implements Index {
+export class NiceIDBIndex implements Index, AsyncIterable<IDBCursorWithValue> {
     /** @param {IDBIndex} idx */
     constructor(idx: IDBIndex);
-    /** @type {string | string[]} */
-    keyPath: string | string[];
-    /** @type {boolean} */
-    multiEntry: boolean;
-    /** @type {string} */
-    name: string;
-    /** @type {IDBObjectStore} */
-    objectStore: IDBObjectStore;
-    /** @type {boolean} */
-    unique: boolean;
+    get keyPath(): string | string[];
+    get multiEntry(): boolean;
+    get name(): string;
+    get unique(): boolean;
     /** @param {IDBValidKey | IDBKeyRange} [query] */
     count(query?: IDBValidKey | IDBKeyRange): Promise<number>;
     /** @param {IDBValidKey | IDBKeyRange} query */

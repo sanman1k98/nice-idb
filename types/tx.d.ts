@@ -1,23 +1,30 @@
 /** @typedef {import('#types').Transaction} Transaction */
 /**
  * @implements {Transaction}
+ * @implements {Disposable}
  */
-export class NiceIDBTransaction implements Transaction {
+export class NiceIDBTransaction implements Transaction, Disposable {
     /**
      * @param {IDBTransaction} tx - The transaction instance to wrap.
      */
     constructor(tx: IDBTransaction);
-    /** @type {IDBDatabase} */
-    db: IDBDatabase;
-    /** @type {IDBTransactionDurability} */
-    durability: IDBTransactionDurability;
-    /** @type {IDBTransactionMode} */
-    mode: IDBTransactionMode;
+    get durability(): IDBTransactionDurability;
+    get mode(): IDBTransactionMode;
+    /**
+     * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
+     */
+    get finished(): boolean;
+    /**
+     * List of stores in the scope of this transaction.
+     * @deprecated
+     * @see {@link IDBTransaction.prototype.objectStoreNames}
+     */
+    get stores(): readonly string[];
     /**
      * List of stores in the scope of this transaction.
      * @see {@link IDBTransaction.prototype.objectStoreNames}
      */
-    get stores(): readonly string[];
+    get storeNames(): readonly string[];
     get error(): DOMException | null;
     abort(): void;
     /**

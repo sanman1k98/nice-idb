@@ -1,25 +1,27 @@
 /** @typedef {import('#types').ObjectStore} ObjectStore */
 /**
  * @implements {ObjectStore}
+ * @implements {AsyncIterable<IDBCursorWithValue>}
  */
-export class NiceIDBObjectStore implements ObjectStore {
+export class NiceIDBObjectStore implements ObjectStore, AsyncIterable<IDBCursorWithValue> {
     /**
      * @param {IDBObjectStore} store - The object store instance to wrap.
      */
     constructor(store: IDBObjectStore);
-    /** @type {boolean} */
-    autoIncrement: boolean;
-    /** @type {string | string[] | null} */
-    keyPath: string | string[] | null;
-    /** @type {string} */
-    name: string;
-    /** @type {IDBTransaction} */
-    transaction: IDBTransaction;
+    /**
+     * List of index names for this store.
+     * @deprecated
+     * @see {@link IDBObjectStore.prototype.indexNames}
+     */
+    get indexes(): readonly string[];
+    get autoIncrement(): boolean;
+    get keyPath(): string | string[] | null;
+    get name(): string;
     /**
      * List of index names for this store.
      * @see {@link IDBObjectStore.prototype.indexNames}
      */
-    get indexes(): readonly string[];
+    get indexNames(): readonly string[];
     /**
      * @param {string} name - Name of the index.
      * @param {string | string[]} keyPath - The key path.
@@ -69,13 +71,14 @@ export class NiceIDBObjectStore implements ObjectStore {
      */
     put(value: any, key?: IDBValidKey): Promise<IDBValidKey>;
     /**
-     * @param {import('./util').CursorOptions} opts
+     * @param {import('./util').CursorOptions} [opts]
+     * @returns {AsyncIterable<IDBCursorWithValue>} An AsyncIterable that returns an IDBCursorWithValue.
      */
-    iter(opts: import("./util").CursorOptions): AsyncGenerator<IDBCursorWithValue, void, any>;
+    iter(opts?: import("./util").CursorOptions): AsyncIterable<IDBCursorWithValue>;
     /**
-     * @param {import('./util').CursorOptions} opts
+     * @param {import('./util').CursorOptions} [opts]
      */
-    iterKeys(opts: import("./util").CursorOptions): AsyncGenerator<IDBCursor, void, any>;
+    iterKeys(opts?: import("./util").CursorOptions): AsyncGenerator<IDBCursor, void, any>;
     [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
     #private;
 }

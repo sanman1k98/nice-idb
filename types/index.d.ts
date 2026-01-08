@@ -1,5 +1,8 @@
 export { NiceIDB } from "./db.js";
 export type NiceIDBUpgradeCallback = import("./db.js").NiceIDBUpgradeCallback;
+export type DefineDatabaseSchema = import("./db.js").DefineDatabaseSchema;
+export type DefineVersionedUpgrade = import("./db.js").DefineVersionedUpgrade;
+export type UpgradeCallback = import("./db.js").UpgradeCallback;
 export type NiceIDBError = import("./util.js").NiceIDBError;
 export type NiceIDBErrorInfo = import("./util.js").NiceIDBErrorInfo;
 export type KeyRangeOptions = import("./util.js").KeyRangeOptions;
