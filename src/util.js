@@ -3,10 +3,15 @@ const logMethods = /** @type {const} */(['log', 'info', 'warn', 'debug', 'error'
 export const logger = new Proxy(console, {
 	get(o, k) {
 		const v = Reflect.get(o, k);
-		if (k in logMethods)
-			return (/** @type {any} */ ...args) => v('[nice-idb]', ...args);
-		else
-			return v;
+		if (logMethods.includes(/** @type {(typeof logMethods)[number]} */(k))) {
+			return (/** @type {any} */ ...args) => {
+				const [maybeMessage, ...rest] = args;
+				if (typeof maybeMessage === 'string')
+					return v(`[nice-idb] ${maybeMessage}`, ...rest);
+				return v('[nice-idb]', ...args);
+			};
+		}
+		return v;
 	},
 });
 
