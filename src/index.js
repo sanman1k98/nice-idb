@@ -1,5 +1,8 @@
 /**
  * @typedef {import('./db.js').NiceIDBUpgradeCallback} NiceIDBUpgradeCallback
+ * @typedef {import('./db.js').DefineDatabaseSchema} DefineDatabaseSchema
+ * @typedef {import('./db.js').DefineVersionedUpgrade} DefineVersionedUpgrade
+ * @typedef {import('./db.js').UpgradeCallback} UpgradeCallback
  * @typedef {import('./util.js').NiceIDBError} NiceIDBError
  * @typedef {import('./util.js').NiceIDBErrorInfo} NiceIDBErrorInfo
  * @typedef {import('./util.js').KeyRangeOptions} KeyRangeOptions
