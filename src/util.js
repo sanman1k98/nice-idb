@@ -1,20 +1,3 @@
-const logMethods = /** @type {const} */(['log', 'info', 'warn', 'debug', 'error']);
-
-export const logger = new Proxy(console, {
-	get(o, k) {
-		const v = Reflect.get(o, k);
-		if (logMethods.includes(/** @type {(typeof logMethods)[number]} */(k))) {
-			return (/** @type {any} */ ...args) => {
-				const [maybeMessage, ...rest] = args;
-				if (typeof maybeMessage === 'string')
-					return v(`[nice-idb] ${maybeMessage}`, ...rest);
-				return v('[nice-idb]', ...args);
-			};
-		}
-		return v;
-	},
-});
-
 /**
  * Get a regular list of strings from a DOMStringList.
  * @param {DOMStringList} list - A DOMStringList instance.
