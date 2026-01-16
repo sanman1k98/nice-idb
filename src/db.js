@@ -214,7 +214,7 @@ export class NiceIDB {
 	 * @returns {-1 | 0 | 1} Comparison result.
 	 * @see {@link window.indexedDB.cmp}
 	 */
-	static compare(a, b) {
+	static cmp(a, b) {
 		return /** @type {-1 | 0 | 1} */(window.indexedDB.cmp(a, b));
 	}
 
