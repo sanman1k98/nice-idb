@@ -46,6 +46,7 @@ import { getStrings } from './util.js';
  * @typedef {object} UpgradeState
  * @property {boolean} [aborted] - To keep track of whether the transaction was aborted between executing upgrade callbacks.
  * @property {IDBTransaction | null} [tx] - A reference to the "upgrade transaction".
+ * @property {number} latestVersion - The highest version number that was defined in the call to `NiceIDB.prototype.define()`.
  * @property {Map<number, UpgradeCallback>} versions - A map of version numbers to upgrade callbacks.
  * @property {() => void} revokeProxies - A function to call after handling the "upgradeneeded" event.
  */
@@ -222,6 +223,7 @@ export class NiceIDB {
 
 		this.#upgrade = {
 			versions,
+			latestVersion,
 			revokeProxies: () => {
 				db.revoke();
 				tx.revoke();
@@ -280,15 +282,14 @@ export class NiceIDB {
 		}
 
 		const upgrade = this.#upgrade;
-		const highestVersion = upgrade.versions.keys().reduce((a, b) => Math.max(a, b));
 
 		if (!version) {
-			version = highestVersion;
-		} else if (version > highestVersion) {
+			version = upgrade.latestVersion;
+		} else if (version > upgrade.latestVersion) {
 			throw new RangeError('Requested version is greater than latest defined version', {
 				cause: {
 					requested: version,
-					latest: highestVersion,
+					latest: upgrade.latestVersion,
 				},
 			});
 		}
@@ -304,7 +305,7 @@ export class NiceIDB {
 			upgradesNeeded = true;
 			const { oldVersion, newVersion } = event;
 
-			if (newVersion > highestVersion)
+			if (newVersion > upgrade.latestVersion)
 				// Ensure we have defined upgrades for the requested version.
 				throw new Error('Missing defined versions');
 
