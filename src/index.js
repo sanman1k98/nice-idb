@@ -18,6 +18,7 @@
 
 export { NiceIDB } from './db.js';
 export {
+	getAsyncIterableEvents,
 	getAsyncIterableRecords,
 	isNiceIDBError,
 	keyRange,
