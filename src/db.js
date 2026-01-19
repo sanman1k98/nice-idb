@@ -299,26 +299,19 @@ export class NiceIDB {
 		let upgradesFinished = false;
 		let lastUpgrade = 0;
 
-		/** @type {(event: IDBVersionChangeEvent) => Promise<void>} */
+		/** @type {(event: IDBVersionChangeEvent & { oldVersion: number, newVersion: number }) => Promise<void>} */
 		const handleUpgrade = async (event) => {
 			upgradesNeeded = true;
 			const { oldVersion, newVersion } = event;
 
-			if (newVersion === null)
-				// Will never happen; only for type-narrowing.
-				throw new Error('Only null when deleting');
 			if (newVersion > highestVersion)
 				// Ensure we have defined upgrades for the requested version.
 				throw new Error('Missing defined versions');
 
 			// Save references to the native IndexedDB objects. They will be used by
 			// the proxies created the call to `.define()`.
+			upgrade.tx = /** @type {IDBTransaction} */(req.transaction);
 			this.#db = req.result;
-			upgrade.tx = req.transaction;
-
-			if (upgrade.tx === null)
-				// Will never happen; only for type-narrowing.
-				throw new Error('Only null when deleting');
 
 			for (let version = oldVersion + 1; version <= newVersion; version++) {
 				const callback = upgrade.versions.get(version);
@@ -339,7 +332,7 @@ export class NiceIDB {
 
 		const upgradePromise = new Promise((resolve, reject) => {
 			req.addEventListener('upgradeneeded', (event) => {
-				handleUpgrade(event).then(resolve, reject);
+				handleUpgrade(/** @type {IDBVersionChangeEvent & { oldVersion: number, newVersion: number }} */(event)).then(resolve, reject);
 			}, { once: true });
 		});
 
