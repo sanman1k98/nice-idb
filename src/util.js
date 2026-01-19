@@ -32,32 +32,20 @@ export function getStrings(list) {
  */
 export async function promisify(request) {
 	return new Promise((resolve, reject) => {
-		/** @satisfies {AddEventListenerOptions} */
-		const opts = { once: true };
-		/** @type {() => void} */
-		let unlisten;
-
-		const handleSuccess = () => {
-			unlisten();
-			resolve(request.result);
-		};
-
 		/** @type {EventListener} */
-		const handleError = (event) => {
-			unlisten();
+		const handleEvent = (event) => {
+			request.removeEventListener('success', handleEvent);
+			request.removeEventListener('error', handleEvent);
+			if (event.type === 'success')
+				return resolve(request.result);
 			const { error, source, transaction } = request;
 			/** @satisfies {NiceIDBErrorInfo} */
 			const cause = { event, request, transaction, error, source };
 			reject(new Error('IDBRequest failed', { cause }));
 		};
-
-		unlisten = () => {
-			request.removeEventListener('success', handleSuccess);
-			request.removeEventListener('error', handleError);
-		};
-
-		request.addEventListener('success', handleSuccess, opts);
-		request.addEventListener('error', handleError, opts);
+		const opts = { once: true };
+		request.addEventListener('success', handleEvent, opts);
+		request.addEventListener('error', handleEvent, opts);
 	});
 }
 
