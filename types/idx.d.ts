@@ -27,13 +27,33 @@ export class NiceIDBIndex implements Index, AsyncIterable<IDBCursorWithValue> {
     /** @param {IDBValidKey | IDBKeyRange} query */
     getKey(query: IDBValidKey | IDBKeyRange): Promise<IDBValidKey | undefined>;
     /**
+     * Traverse the index with an {@link IDBCursorWithValue} in a `for await ... of` loop.
+     *
+     * @example
+     *
+     * ```ts
+     * const store = db.tx('store-name', 'readonly').store('store-name');
+     * const index = store.index('index-name');
+     * for await (const cursor of index.iter({ dir: 'prev' })) {
+     *   const { key, value } = cursor;
+     *   console.log(key, value);
+     *   // `cursor.continue()` is automatically called.
+     * }
+     * ```
+     *
      * @param {import('./util').CursorOptions} opts
+     * @returns {AsyncIterable<IDBCursorWithValue>} The cursor instance.
      */
-    iter(opts: import("./util").CursorOptions): AsyncGenerator<IDBCursorWithValue, void, any>;
+    iter(opts: import("./util").CursorOptions): AsyncIterable<IDBCursorWithValue>;
     /**
+     * Traverse the index's keys with an {@link IDBCursor} in a `for await ... of` loop.
+     *
+     * @see {@link NiceIDBIndex#iter}
+     *
      * @param {import('./util').CursorOptions} opts
+     * @returns {AsyncIterable<IDBCursor>} The cursor instance.
      */
-    iterKeys(opts: import("./util").CursorOptions): AsyncGenerator<IDBCursor, void, any>;
+    iterKeys(opts: import("./util").CursorOptions): AsyncIterable<IDBCursor>;
     [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
     #private;
 }

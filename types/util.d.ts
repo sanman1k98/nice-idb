@@ -34,6 +34,8 @@ export function isNiceIDBError(error: unknown): error is NiceIDBError;
  */
 export function parseError(error: unknown): NiceIDBErrorInfo | null;
 /**
+ * Argument passed to {@link keyRange()} to create an {@link IDBKeyRange}.
+ *
  * @typedef {object} KeyRangeOptions
  * @property {IDBValidKey} [only] - A value to pass to {@link IDBKeyRange.only}.
  * @property {IDBValidKey} [gte] - Closed lower bound.
@@ -42,7 +44,15 @@ export function parseError(error: unknown): NiceIDBErrorInfo | null;
  * @property {IDBValidKey} [lt] - Open upper bound.
  */
 /**
- * Create an IDBKeyRange.
+ * Create an IDBKeyRange by specifying at least one of the following options:
+ * `only`, `gt`, `gte`, `lt`, `lte`.
+ *
+ * @example
+ *
+ * ```ts
+ * const keyRange = NiceIDB.keyRange({ gte: 'A', lte: 'F' });
+ * ```
+ *
  * @param {KeyRangeOptions} opts - Specify a single value or upper/lower bounds.
  * @returns {IDBKeyRange} An IDBKeyRange with the specified bounds.
  */
@@ -64,7 +74,17 @@ export function keyRange(opts: KeyRangeOptions): IDBKeyRange;
  * @returns {AsyncGenerator<C>} An object to be used in a `await for...of` loop.
  */
 export function getAsyncIterableRecords<const T = true, C extends IDBCursor = T extends true ? IDBCursorWithValue : IDBCursor>(source: IDBObjectStore | IDBIndex, opts?: CursorOptions | undefined, withValues?: T, ...args: any[]): AsyncGenerator<C>;
-export const logger: Console;
+/**
+ * @template {EventTarget} T
+ * @template {string} const E = Parameters<T['addEventListener']>[0]
+ * @param {T} target
+ * @param {{ types: E[], signal?: AbortSignal }} opts
+ * @returns {AsyncIterableIterator<Event>} Events fired on the `target`.
+ */
+export function getAsyncIterableEvents<T extends EventTarget, const E extends string>(target: T, opts: {
+    types: E[];
+    signal?: AbortSignal;
+}): AsyncIterableIterator<Event>;
 export type NiceIDBErrorInfo = {
     /**
      * - The event that caused the Promise to reject.
@@ -90,6 +110,9 @@ export type NiceIDBErrorInfo = {
 export type NiceIDBError = Error & {
     cause: NiceIDBErrorInfo;
 };
+/**
+ * Argument passed to {@link keyRange ()} to create an {@link IDBKeyRange}.
+ */
 export type KeyRangeOptions = {
     /**
      * - A value to pass to {@link IDBKeyRange.only}.

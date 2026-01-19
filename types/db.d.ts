@@ -1,12 +1,5 @@
 /** @typedef {import('#types').Database} Database */
 /**
- * @callback NiceIDBUpgradeCallback
- * @param {NiceIDB} db - A database instance created from the result of the IDBOpenDBRequest.
- * @param {NiceIDBTransaction} tx - Any "upgrade transaction" instance created from the IDBOpenDBRequest with the `mode` set to "versionchange".
- * @param {IDBVersionChangeEvent} event - A reference to the IDBVersionChangeEvent.
- * @returns {void | Promise<void>}
- */
-/**
  * A callback that makes changes to the database like creating or deleting
  * object stores and indexes.
  * @callback UpgradeCallback
@@ -22,38 +15,141 @@
  */
 /**
  * Defines all versions of the database, starting from version 1.
- * @callback DefineDatabaseSchema
+ * @callback DefineDatabaseVersions
  * @param {DefineVersionedUpgrade} defineVersion - Use to define each version
  * of the database by making changes to its schema.
- * @param {NiceIDB} db - The database instance to upgraded.
- * @param {NiceIDBTransaction} tx - The "upgrade transaction" instance.
+ * @param {NiceIDBUpgradableDatabase} db - The database instance to upgraded.
+ * @param {NiceIDBUpgradeTransaction} tx - The "upgrade transaction" instance.
  * @returns {void | Promise<void>}
  */
 /**
- * @typedef {'ro' | 'rw' | 'readonly' | 'readwrite'} TransactionMode
+ * @typedef DatabaseUpgradeMethods
+ * @property {(name: string, options?: IDBObjectStoreParameters) => NiceIDBUpgradableStore} createStore - Create an object store.
+ * @property {(name: string) => void} deleteStore - Delete an object store.
+ *
+ * @typedef {NiceIDB & DatabaseUpgradeMethods} NiceIDBUpgradableDatabase
+ * @typedef {InstanceType<typeof NiceIDBTransaction.Upgrade>} NiceIDBUpgradeTransaction
+ * @typedef {InstanceType<typeof NiceIDBStore.Upgradable>} NiceIDBUpgradableStore
  */
+/**
+ * @typedef {object} UpgradeState
+ * @property {boolean} [aborted] - To keep track of whether the transaction was aborted between executing upgrade callbacks.
+ * @property {IDBTransaction | null} [tx] - A reference to the "upgrade transaction".
+ * @property {Map<number, UpgradeCallback>} versions - A map of version numbers to upgrade callbacks.
+ * @property {() => void} revokeProxies - A function to call after handling the "upgradeneeded" event.
+ */
+/** @typedef {'ro' | 'rw' | 'readonly' | 'readwrite'} TransactionMode */
 /**
  * Manage and connect to indexedDB databases.
  *
- * ```ts
+ * @example
  * import { NiceIDB } from 'nice-idb';
  *
- * // Open a connection a database with a callback to define its structure.
- * const db = await NiceIDB.open('database', 1, (db) => {
- *   const store = db.createObjectStore('messages', { autoincrement: true });
- *   store.createIndex('message', 'message', { unique: false });
- * });
+ * // Open an existing database.
+ * const db = await new NiceIDB('my-app-db').open();
+ *
+ * @example
+ * // Define versions before opening.
+ * const db = new NiceIDB('my-app-db')
+ *   .define((version, db) => {
+ *     version(1, () => {
+ *       const logs = db.createStore('logs', { autoincrement: true });
+ *       logs.createIndex('types', 'type');
+ *       logs.createIndex('messages', 'message');
+ *     });
+ *   });
+ * // Will open the last defined version.
+ * await db.open();
  *
  * // Convenience method to create a transaction and access an object store.
- * const messages = db.store('messages', 'readwrite');
- * // Make request to add a value.
- * await messages.add({ message: 'Hello world!' });
- * ```
+ * const logs = db.store('logs', 'rw');
+ * await logs.add({ type: 'info', message: 'Hello, World!' });
  *
  * @implements {Database}
  * @implements {Disposable}
  */
 export class NiceIDB implements Database, Disposable {
+    static Request: typeof NiceIDBRequest;
+    static Transaction: typeof NiceIDBTransaction;
+    static Store: typeof NiceIDBStore;
+    static Index: typeof NiceIDBIndex;
+    static UpgradeTransaction: {
+        new (tx: IDBTransaction): {
+            store(name: string): {
+                "__#private@#store": IDBObjectStore;
+                createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters | undefined): NiceIDBIndex;
+                deleteIndex(name: string): void;
+                "__#private@#store": IDBObjectStore;
+                get indexes(): readonly string[];
+                get autoIncrement(): boolean;
+                get keyPath(): string | string[] | null;
+                get name(): string;
+                get indexNames(): readonly string[];
+                index(name: string): NiceIDBIndex;
+                add(value: any, key?: IDBValidKey): Promise<IDBValidKey>;
+                clear(): Promise<undefined>;
+                count(query?: IDBValidKey | IDBKeyRange): Promise<number>;
+                delete(query: IDBValidKey | IDBKeyRange): Promise<undefined>;
+                get(query: IDBValidKey | IDBKeyRange): Promise<any>;
+                getAll(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<any[]>;
+                getAllKeys(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<IDBValidKey[]>;
+                getKey(query: IDBValidKey | IDBKeyRange): Promise<IDBValidKey | undefined>;
+                put(value: any, key?: IDBValidKey): Promise<IDBValidKey>;
+                iter(opts?: import("./util.js").CursorOptions): AsyncIterable<IDBCursorWithValue>;
+                iterKeys(opts?: import("./util.js").CursorOptions): AsyncIterable<IDBCursor>;
+                [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
+            };
+            "__#private@#tx": IDBTransaction;
+            "__#private@#event": Promise<Event>;
+            "__#private@#finished": boolean;
+            "__#private@#aborted": boolean;
+            get durability(): IDBTransactionDurability;
+            get mode(): IDBTransactionMode;
+            get finished(): boolean;
+            get aborted(): boolean;
+            "__#private@#storesProxy": Record<string, NiceIDBStore> | undefined;
+            get stores(): {
+                [name: string]: NiceIDBStore;
+            };
+            get storeNames(): readonly string[];
+            get error(): DOMException | null;
+            abort(): void;
+            addEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | AddEventListenerOptions): void;
+            removeEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | EventListenerOptions): void;
+            commit(): void;
+            promise(): Promise<void>;
+            done(): Promise<void>;
+            [Symbol.dispose](): void;
+        };
+        Upgrade: /*elided*/ any;
+    };
+    static UpgradableStore: {
+        new (store: IDBObjectStore, tx: IDBTransaction | null): {
+            "__#private@#store": IDBObjectStore;
+            createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters | undefined): NiceIDBIndex;
+            deleteIndex(name: string): void;
+            "__#private@#store": IDBObjectStore;
+            get indexes(): readonly string[];
+            get autoIncrement(): boolean;
+            get keyPath(): string | string[] | null;
+            get name(): string;
+            get indexNames(): readonly string[];
+            index(name: string): NiceIDBIndex;
+            add(value: any, key?: IDBValidKey): Promise<IDBValidKey>;
+            clear(): Promise<undefined>;
+            count(query?: IDBValidKey | IDBKeyRange): Promise<number>;
+            delete(query: IDBValidKey | IDBKeyRange): Promise<undefined>;
+            get(query: IDBValidKey | IDBKeyRange): Promise<any>;
+            getAll(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<any[]>;
+            getAllKeys(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<IDBValidKey[]>;
+            getKey(query: IDBValidKey | IDBKeyRange): Promise<IDBValidKey | undefined>;
+            put(value: any, key?: IDBValidKey): Promise<IDBValidKey>;
+            iter(opts?: import("./util.js").CursorOptions): AsyncIterable<IDBCursorWithValue>;
+            iterKeys(opts?: import("./util.js").CursorOptions): AsyncIterable<IDBCursor>;
+            [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
+        };
+        Upgradable: /*elided*/ any;
+    };
     /**
      * Compare two keys.
      * @param {IDBValidKey} a
@@ -61,7 +157,7 @@ export class NiceIDB implements Database, Disposable {
      * @returns {-1 | 0 | 1} Comparison result.
      * @see {@link window.indexedDB.cmp}
      */
-    static compare(a: IDBValidKey, b: IDBValidKey): -1 | 0 | 1;
+    static cmp(a: IDBValidKey, b: IDBValidKey): -1 | 0 | 1;
     /**
      * Get the names and versions of all available databases.
      * @returns {Promise<IDBDatabaseInfo[]>} A promise that resolves to the list of databases.
@@ -71,35 +167,58 @@ export class NiceIDB implements Database, Disposable {
     /**
      * Delete a database.
      * @param {string} name
-     * @returns {Promise<null>} A Promise that resolves to `null` if successful.
      */
-    static delete(name: string): Promise<null>;
+    static delete(name: string): NiceIDBRequest<IDBOpenDBRequest, null>;
     /**
-     * @param {string} name - The name of the database to define the schema for.
-     * @param {DefineDatabaseSchema} defineSchema - A callback defining the database schema for each version of it.
-     * @returns {Promise<NiceIDB>} The upgraded database instance.
+     * @param {string} name - Name of the database to open.
+     * @param {number} [version] - Optional version number.
      */
-    static define(name: string, defineSchema: DefineDatabaseSchema): Promise<NiceIDB>;
+    static open(name: string, version?: number): NiceIDBRequest<IDBOpenDBRequest, NiceIDB>;
     /**
-     * Open a database.
-     * @param {string} name - Name of the database.
-     * @param {number} [version] - A positive integer. If ommitted and the database already exists, this method will open a connection to it.
-     * @param {NiceIDBUpgradeCallback} [upgradeHandler] - An optional callback to handle the "upgradeneeded" event.
-     * @returns {Promise<NiceIDB>} A Promise that resolves to a database instance.
+     * @param {IDBDatabase | string} db - A database name or instance.
      */
-    static open(name: string, version?: number, upgradeHandler?: NiceIDBUpgradeCallback): Promise<NiceIDB>;
+    constructor(db: IDBDatabase | string);
     /**
-     * @param {IDBDatabase} db - The database instance to wrap.
+     * Returns `true` when there is an active connection to the underlying database.
      */
-    constructor(db: IDBDatabase);
+    get opened(): boolean;
     get name(): string;
     get version(): number;
     /**
-     * List of object stores in the database.
-     * @deprecated Use `NiceIDB.prototype.storeNames` instead.
-     * @see {@link IDBDatabase.prototype.objectStoreNames}
+     * @param {DefineDatabaseVersions} defineVersions
      */
-    get stores(): readonly string[];
+    define(defineVersions: DefineDatabaseVersions): this;
+    /**
+     * Request to open a connection to this database.
+     *
+     * @example
+     * // Open an existing database.
+     * const db = await new NiceIDB('my-app-db').open();
+     *
+     * @example
+     * // Define versions before opening.
+     * const db = new NiceIDB('my-app-db')
+     *   .define((version, db) => {
+     *     version(1, () => {
+     *       const logs = db.createStore('logs', { autoincrement: true });
+     *       logs.createIndex('types', 'type');
+     *       logs.createIndex('messages', 'message');
+     *     });
+     *   });
+     *
+     * // Will open the last defined version.
+     * await db.open();
+     *
+     * @example
+     * // Call and attach event listeners.
+     * const db = await new NiceIDB('my-app-db').open().once('blocked', () => {
+     *   console.error('blocked from opening database');
+     *   // Handle the event...
+     * });
+     * @param {number} [version] - If not specified, will be the last defined version or the existing version.
+     * @returns {NiceIDBRequest<IDBOpenDBRequest, this>} A reference to `this`.
+     */
+    open(version?: number): NiceIDBRequest<IDBOpenDBRequest, this>;
     /**
      * List of object stores in the database.
      * @see {@link IDBDatabase.prototype.objectStoreNames}
@@ -117,30 +236,6 @@ export class NiceIDB implements Database, Disposable {
      * @param {boolean | EventListenerOptions} options
      */
     removeEventListener(type: keyof IDBDatabaseEventMap, listener: (this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any, options: boolean | EventListenerOptions): void;
-    /**
-     * Create a new object store.
-     * @param {string} name
-     * @param {IDBObjectStoreParameters} [options]
-     * @returns {NiceIDBObjectStore} An object store instance.
-     */
-    createStore(name: string, options?: IDBObjectStoreParameters): NiceIDBObjectStore;
-    /**
-     * @param {string} name
-     */
-    deleteStore(name: string): void;
-    /**
-     * Create a new object store.
-     * @deprecated
-     * @param {string} name
-     * @param {IDBObjectStoreParameters} [options]
-     * @returns {NiceIDBObjectStore} An object store instance.
-     */
-    createObjectStore(name: string, options?: IDBObjectStoreParameters): NiceIDBObjectStore;
-    /**
-     * @deprecated
-     * @param {string} name
-     */
-    deleteObjectStore(name: string): void;
     /**
      * Create a transaction instance.
      *
@@ -164,15 +259,15 @@ export class NiceIDB implements Database, Disposable {
      * @param {string} name - Name of the object store.
      * @param {TransactionMode} [mode] - The transaction mode to access the object store; defaults to "readonly".
      * @param {IDBTransactionOptions} [opts] - Defaults to `{ durability: "default" }`
-     * @returns {NiceIDBObjectStore} The object store instance.
+     * @returns {NiceIDBStore} The object store instance.
      */
-    store(name: string, mode?: TransactionMode, opts?: IDBTransactionOptions): NiceIDBObjectStore;
+    store(name: string, mode?: TransactionMode, opts?: IDBTransactionOptions): NiceIDBStore;
     close(): void;
+    SELF_DESTRUCT(): NiceIDBRequest<IDBOpenDBRequest, null>;
     [Symbol.dispose](): void;
     #private;
 }
 export type Database = import("#types").Database;
-export type NiceIDBUpgradeCallback = (db: NiceIDB, tx: NiceIDBTransaction, event: IDBVersionChangeEvent) => void | Promise<void>;
 /**
  * A callback that makes changes to the database like creating or deleting
  * object stores and indexes.
@@ -185,8 +280,41 @@ export type DefineVersionedUpgrade = (versionNumber: number, upgrade: UpgradeCal
 /**
  * Defines all versions of the database, starting from version 1.
  */
-export type DefineDatabaseSchema = (defineVersion: DefineVersionedUpgrade, db: NiceIDB, tx: NiceIDBTransaction) => void | Promise<void>;
+export type DefineDatabaseVersions = (defineVersion: DefineVersionedUpgrade, db: NiceIDBUpgradableDatabase, tx: NiceIDBUpgradeTransaction) => void | Promise<void>;
+export type DatabaseUpgradeMethods = {
+    /**
+     * - Create an object store.
+     */
+    createStore: (name: string, options?: IDBObjectStoreParameters) => NiceIDBUpgradableStore;
+    /**
+     * - Delete an object store.
+     */
+    deleteStore: (name: string) => void;
+};
+export type NiceIDBUpgradableDatabase = NiceIDB & DatabaseUpgradeMethods;
+export type NiceIDBUpgradeTransaction = InstanceType<typeof NiceIDBTransaction.Upgrade>;
+export type NiceIDBUpgradableStore = InstanceType<typeof NiceIDBStore.Upgradable>;
+export type UpgradeState = {
+    /**
+     * - To keep track of whether the transaction was aborted between executing upgrade callbacks.
+     */
+    aborted?: boolean;
+    /**
+     * - A reference to the "upgrade transaction".
+     */
+    tx?: IDBTransaction | null;
+    /**
+     * - A map of version numbers to upgrade callbacks.
+     */
+    versions: Map<number, UpgradeCallback>;
+    /**
+     * - A function to call after handling the "upgradeneeded" event.
+     */
+    revokeProxies: () => void;
+};
 export type TransactionMode = "ro" | "rw" | "readonly" | "readwrite";
-import { NiceIDBObjectStore } from './store.js';
+import { NiceIDBRequest } from './req.js';
 import { NiceIDBTransaction } from './tx.js';
+import { NiceIDBStore } from './store.js';
+import { NiceIDBIndex } from './idx.js';
 //# sourceMappingURL=db.d.ts.map
