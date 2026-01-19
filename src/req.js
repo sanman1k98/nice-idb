@@ -117,7 +117,14 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 		return this.#req.readyState === 'pending';
 	}
 
-	result() {
+	/**
+	 * Another way to resolve the `result` of the underlying request.
+	 *
+	 * @example
+	 * const result = await niceRequest;
+	 * const alsoResult = await niceRequest.result;
+	 */
+	get result() {
 		return this.#promise;
 	}
 
