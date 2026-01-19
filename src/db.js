@@ -221,6 +221,9 @@ export class NiceIDB {
 			tx.proxy,
 		);
 
+		if (latestVersion !== 0)
+			throw new Error('No versions defined');
+
 		this.#upgrade = {
 			versions,
 			latestVersion,
