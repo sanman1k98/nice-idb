@@ -126,7 +126,12 @@ export class NiceIDB {
 		}
 	}
 
-	#createProxies() {
+	/**
+	 * Wrap database and transaction objects with extra methods to create and
+	 * delete object stores and indexes. Will be passed in as parameters when
+	 * calling `NiceIDB.prototype.define()`.
+	 */
+	#createUpgradeProxies() {
 		/** @type {ProxyHandler<NiceIDBUpgradableDatabase>} */
 		const dbProxyHandler = {
 			get: (_, k) => {
@@ -200,7 +205,7 @@ export class NiceIDB {
 		if (this.#upgrade)
 			throw new Error('Versions have already been defined');
 
-		const { db, tx } = this.#createProxies();
+		const { db, tx } = this.#createUpgradeProxies();
 		const versions = new Map();
 		let latestVersion = 0;
 
