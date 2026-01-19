@@ -143,7 +143,7 @@ export function keyRange(opts) {
 		}
 	}
 
-	if (open !== undefined) {
+	if (only !== undefined) {
 		if (lower !== undefined || upper !== undefined)
 			throw new RangeError('Cannot use any other options with "only"');
 		return IDBKeyRange.only(only);
