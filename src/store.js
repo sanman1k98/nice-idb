@@ -7,9 +7,8 @@ import { getAsyncIterableRecords, getStrings, promisify } from './util.js';
  * @implements {ObjectStore}
  * @implements {AsyncIterable<IDBCursorWithValue>}
  */
-export class NiceIDBObjectStore {
-	/** @type {IDBObjectStore} */
-	#store;
+export class NiceIDBStore {
+	/** @type {IDBObjectStore} */ #store;
 
 	/**
 	 * @param {IDBObjectStore} store - The object store instance to wrap.
@@ -45,24 +44,6 @@ export class NiceIDBObjectStore {
 	 */
 	get indexNames() {
 		return getStrings(this.#store.indexNames);
-	}
-
-	/**
-	 * @param {string} name - Name of the index.
-	 * @param {string | string[]} keyPath - The key path.
-	 * @param {IDBIndexParameters} [options] - Additional options to configure the index.
-	 * @returns {NiceIDBIndex} The newly created index.
-	 */
-	createIndex(name, keyPath, options) {
-		const idx = this.#store.createIndex(name, keyPath, options);
-		return new NiceIDBIndex(idx);
-	}
-
-	/**
-	 * @param {string} name - Name of the index.
-	 */
-	deleteIndex(name) {
-		return this.#store.deleteIndex(name);
 	}
 
 	/**
@@ -169,7 +150,7 @@ export class NiceIDBObjectStore {
 	/**
 	 * Traverse the store's keys with an {@link IDBCursor} in a `for await ... of` loop.
 	 *
-	 * @see {@link NiceIDBObjectStore#iter}
+	 * @see {@link NiceIDBStore#iter}
 	 *
 	 * @param {import('./util').CursorOptions} [opts]
 	 * @returns {AsyncIterable<IDBCursor>} The cursor instance.
@@ -179,7 +160,7 @@ export class NiceIDBObjectStore {
 	}
 
 	/**
-	 * Shortcut for {@link NiceIDBObjectStore#iter}.
+	 * Shortcut for {@link NiceIDBStore#iter}.
 	 *
 	 * @example
 	 *
@@ -193,4 +174,37 @@ export class NiceIDBObjectStore {
 	async* [Symbol.asyncIterator]() {
 		yield* getAsyncIterableRecords(this.#store);
 	}
+
+	/** An upgradable object store to be used within "upgrade transactions". */
+	static Upgradable = class NiceIDBUpgradableStore extends NiceIDBStore {
+		/** @type {IDBObjectStore} */ #store;
+
+		/**
+		 * @param {IDBObjectStore} store
+		 * @param {IDBTransaction | null} tx
+		 */
+		constructor(store, tx) {
+			if (!(tx instanceof IDBTransaction) || tx.mode !== 'versionchange')
+				throw new TypeError('Expected an upgrade transaction');
+			super(store);
+			this.#store = store;
+		}
+
+		/**
+		 * @param {string} name
+		 * @param {string | string[]} keyPath
+		 * @param {IDBIndexParameters | undefined} [options]
+		 */
+		createIndex(name, keyPath, options) {
+			const idx = this.#store.createIndex(name, keyPath, options);
+			return new NiceIDBIndex(idx);
+		}
+
+		/**
+		 * @param {string} name
+		 */
+		deleteIndex(name) {
+			return this.#store.deleteIndex(name);
+		}
+	};
 }

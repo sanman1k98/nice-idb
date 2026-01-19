@@ -1,17 +1,10 @@
-/** @import { NiceIDBErrorInfo } from './util.js' */
-import { NiceIDBObjectStore } from './store.js';
+import { NiceIDBIndex } from './idx.js';
+import { NiceIDBRequest } from './req.js';
+import { NiceIDBStore } from './store.js';
 import { NiceIDBTransaction } from './tx.js';
-import { getStrings, promisify } from './util.js';
+import { getStrings } from './util.js';
 
 /** @typedef {import('#types').Database} Database */
-
-/**
- * @callback NiceIDBUpgradeCallback
- * @param {NiceIDB} db - A database instance created from the result of the IDBOpenDBRequest.
- * @param {NiceIDBTransaction} tx - Any "upgrade transaction" instance created from the IDBOpenDBRequest with the `mode` set to "versionchange".
- * @param {IDBVersionChangeEvent} event - A reference to the IDBVersionChangeEvent.
- * @returns {void | Promise<void>}
- */
 
 /**
  * A callback that makes changes to the database like creating or deleting
@@ -31,65 +24,349 @@ import { getStrings, promisify } from './util.js';
 
 /**
  * Defines all versions of the database, starting from version 1.
- * @callback DefineDatabaseSchema
+ * @callback DefineDatabaseVersions
  * @param {DefineVersionedUpgrade} defineVersion - Use to define each version
  * of the database by making changes to its schema.
- * @param {NiceIDB} db - The database instance to upgraded.
- * @param {NiceIDBTransaction} tx - The "upgrade transaction" instance.
+ * @param {NiceIDBUpgradableDatabase} db - The database instance to upgraded.
+ * @param {NiceIDBUpgradeTransaction} tx - The "upgrade transaction" instance.
  * @returns {void | Promise<void>}
  */
 
 /**
- * @typedef {'ro' | 'rw' | 'readonly' | 'readwrite'} TransactionMode
+ * @typedef DatabaseUpgradeMethods
+ * @property {(name: string, options?: IDBObjectStoreParameters) => NiceIDBUpgradableStore} createStore - Create an object store.
+ * @property {(name: string) => void} deleteStore - Delete an object store.
+ *
+ * @typedef {NiceIDB & DatabaseUpgradeMethods} NiceIDBUpgradableDatabase
+ * @typedef {InstanceType<typeof NiceIDBTransaction.Upgrade>} NiceIDBUpgradeTransaction
+ * @typedef {InstanceType<typeof NiceIDBStore.Upgradable>} NiceIDBUpgradableStore
  */
+
+/**
+ * @typedef {object} UpgradeState
+ * @property {boolean} [aborted] - To keep track of whether the transaction was aborted between executing upgrade callbacks.
+ * @property {IDBTransaction | null} [tx] - A reference to the "upgrade transaction".
+ * @property {Map<number, UpgradeCallback>} versions - A map of version numbers to upgrade callbacks.
+ * @property {() => void} revokeProxies - A function to call after handling the "upgradeneeded" event.
+ */
+
+/** @typedef {'ro' | 'rw' | 'readonly' | 'readwrite'} TransactionMode */
 
 /**
  * Manage and connect to indexedDB databases.
  *
- * ```ts
+ * @example
  * import { NiceIDB } from 'nice-idb';
  *
- * // Open a connection a database with a callback to define its structure.
- * const db = await NiceIDB.open('database', 1, (db) => {
- *   const store = db.createObjectStore('messages', { autoincrement: true });
- *   store.createIndex('message', 'message', { unique: false });
- * });
+ * // Open an existing database.
+ * const db = await new NiceIDB('my-app-db').open();
+ *
+ * @example
+ * // Define versions before opening.
+ * const db = new NiceIDB('my-app-db')
+ *   .define((version, db) => {
+ *     version(1, () => {
+ *       const logs = db.createStore('logs', { autoincrement: true });
+ *       logs.createIndex('types', 'type');
+ *       logs.createIndex('messages', 'message');
+ *     });
+ *   });
+ * // Will open the last defined version.
+ * await db.open();
  *
  * // Convenience method to create a transaction and access an object store.
- * const messages = db.store('messages', 'readwrite');
- * // Make request to add a value.
- * await messages.add({ message: 'Hello world!' });
- * ```
+ * const logs = db.store('logs', 'rw');
+ * await logs.add({ type: 'info', message: 'Hello, World!' });
  *
  * @implements {Database}
  * @implements {Disposable}
  */
 export class NiceIDB {
-	/** @type {IDBDatabase} */
-	#db;
+	static Request = NiceIDBRequest;
+	static Transaction = NiceIDBTransaction;
+	static Store = NiceIDBStore;
+	static Index = NiceIDBIndex;
+
+	static UpgradeTransaction = NiceIDBTransaction.Upgrade;
+	static UpgradableStore = NiceIDBStore.Upgradable;
+
+	/** @type {string} */ #name;
+	/** @type {IDBDatabase | undefined} */ #db;
+	/** @type {UpgradeState | undefined} */ #upgrade;
 
 	/**
-	 * @param {IDBDatabase} db - The database instance to wrap.
+	 * Returns `true` when there is an active connection to the underlying database.
 	 */
-	constructor(db) {
-		this.#db = db;
+	get opened() {
+		return this.#db !== undefined;
 	}
 
 	get name() {
-		return this.#db.name;
+		return this.#name;
 	}
 
 	get version() {
+		if (this.#db === undefined)
+			throw new Error('Connection to database has not been opened');
 		return this.#db.version;
 	}
 
 	/**
-	 * List of object stores in the database.
-	 * @deprecated Use `NiceIDB.prototype.storeNames` instead.
-	 * @see {@link IDBDatabase.prototype.objectStoreNames}
+	 * @param {IDBDatabase | string} db - A database name or instance.
 	 */
-	get stores() {
-		return getStrings(this.#db.objectStoreNames);
+	constructor(db) {
+		if (db instanceof IDBDatabase) {
+			this.#name = db.name;
+			this.#db = db;
+		} else if (typeof db === 'string') {
+			this.#name = db;
+		} else {
+			throw new TypeError('Expected a string or IDBDatabase');
+		}
+	}
+
+	#createProxies() {
+		/** @type {ProxyHandler<NiceIDBUpgradableDatabase>} */
+		const dbProxyHandler = {
+			get: (_, k) => {
+				if (k === 'name')
+					return this.#name;
+				if (!this.#db)
+					throw new Error('Cannot access database outside of upgrade callback');
+
+				if (k === 'createStore') {
+					/** @type {(...args: Parameters<IDBDatabase['createObjectStore']>) => NiceIDBUpgradableStore} */
+					return (...args) => {
+						if (!this.#db || !this.#upgrade || !this.#upgrade.tx)
+							throw new Error('Invalid upgrade state');
+						const store = this.#db.createObjectStore(...args);
+						return new NiceIDB.UpgradableStore(store, this.#upgrade.tx);
+					};
+				} else if (k === 'deleteStore') {
+					/** @type {IDBDatabase['deleteObjectStore']} */
+					return (name) => {
+						if (!this.#db || !this.#upgrade || !this.#upgrade.tx)
+							throw new Error('Invalid upgrade state');
+						return this.#db.deleteObjectStore(name);
+					};
+				}
+
+				const v = Reflect.get(this, k);
+				return typeof v === 'function' ? v.bind(this) : v;
+			},
+		};
+
+		/** @type {NiceIDBTransaction | undefined} */
+		let txTarget;
+
+		/** @type {ProxyHandler<NiceIDBTransaction>} */
+		const txProxyHandler = {
+			get: (_, k) => {
+				if (!this.#upgrade || !this.#upgrade.tx)
+					throw new Error('Cannot access transaction outside of upgrade callback');
+				txTarget ??= new NiceIDB.UpgradeTransaction(this.#upgrade.tx);
+
+				if (k === 'abort') {
+					return () => {
+						if (!this.#upgrade || !this.#upgrade.tx || !txTarget)
+							throw new Error('Missing upgrade data');
+						this.#upgrade.aborted = true;
+						return txTarget.abort();
+					};
+				}
+				const v = Reflect.get(txTarget, k);
+				return typeof v === 'function' ? v.bind(txTarget) : v;
+			},
+		};
+
+		const tx = Proxy.revocable(Object.create(null), txProxyHandler);
+		const db = Proxy.revocable(/** @type {NiceIDBUpgradableDatabase} */
+			(/** @type {unknown} */(this)),
+			dbProxyHandler,
+		);
+
+		return { db, tx };
+	}
+
+	/**
+	 * @param {DefineDatabaseVersions} defineVersions
+	 */
+	define(defineVersions) {
+		if (typeof defineVersions !== 'function')
+			throw new TypeError('Expected a callback as an argument');
+		if (this.#db !== undefined)
+			throw new Error('Cannot define versions on existing connection to database');
+		if (this.#upgrade)
+			throw new Error('Versions have already been defined');
+
+		const { db, tx } = this.#createProxies();
+		const versions = new Map();
+		let latestVersion = 0;
+
+		/** @type {DefineVersionedUpgrade} */
+		const defineVersion = (num, callback) => {
+			if (typeof num !== 'number' || !Number.isInteger(num) || num < 0)
+				throw new TypeError('Version must be positive integer');
+			if (typeof callback !== 'function')
+				throw new TypeError('Expected callback function for the upgrade');
+			if (num !== ++latestVersion)
+				throw new Error('Versions must be defined in-order and in increments of one');
+			versions.set(num, callback);
+		};
+
+		defineVersions(
+			defineVersion,
+			db.proxy,
+			tx.proxy,
+		);
+
+		this.#upgrade = {
+			versions,
+			revokeProxies: () => {
+				db.revoke();
+				tx.revoke();
+			},
+		};
+
+		return this;
+	}
+
+	/**
+	 * Request to open a connection to this database.
+	 *
+	 * @example
+	 * // Open an existing database.
+	 * const db = await new NiceIDB('my-app-db').open();
+	 *
+	 * @example
+	 * // Define versions before opening.
+	 * const db = new NiceIDB('my-app-db')
+	 *   .define((version, db) => {
+	 *     version(1, () => {
+	 *       const logs = db.createStore('logs', { autoincrement: true });
+	 *       logs.createIndex('types', 'type');
+	 *       logs.createIndex('messages', 'message');
+	 *     });
+	 *   });
+	 *
+	 * // Will open the last defined version.
+	 * await db.open();
+	 *
+	 * @example
+	 * // Call and attach event listeners.
+	 * const db = await new NiceIDB('my-app-db').open().once('blocked', () => {
+	 *   console.error('blocked from opening database');
+	 *   // Handle the event...
+	 * });
+	 * @param {number} [version] - If not specified, will be the last defined version or the existing version.
+	 * @returns {NiceIDBRequest<IDBOpenDBRequest, this>} A reference to `this`.
+	 */
+	open(version) {
+		if (this.#db)
+			throw new Error('Database connection is already open');
+
+		if (version !== undefined) {
+			if (typeof version !== 'number')
+				throw new TypeError('Expected a positive integer number');
+			else if (Number.isInteger(version) || version <= 0)
+				throw new RangeError('Version must be a positive integer');
+		}
+
+		if (!this.#upgrade) {
+			const req = indexedDB.open(this.#name, version);
+			return new NiceIDBRequest(req, (db) => {
+				return (this.#db = db, this);
+			});
+		}
+
+		const upgrade = this.#upgrade;
+		const highestVersion = upgrade.versions.keys().reduce((a, b) => Math.max(a, b));
+
+		if (!version) {
+			version = highestVersion;
+		} else if (version > highestVersion) {
+			throw new RangeError('Requested version is greater than latest defined version', {
+				cause: {
+					requested: version,
+					latest: highestVersion,
+				},
+			});
+		}
+
+		const req = window.indexedDB.open(this.#name, version);
+
+		let upgradesNeeded = false;
+		let upgradesFinished = false;
+		let lastUpgrade = 0;
+
+		/** @type {(event: IDBVersionChangeEvent) => Promise<void>} */
+		const handleUpgrade = async (event) => {
+			upgradesNeeded = true;
+			const { oldVersion, newVersion } = event;
+
+			if (newVersion === null)
+				// Will never happen; only for type-narrowing.
+				throw new Error('Only null when deleting');
+			if (newVersion > highestVersion)
+				// Ensure we have defined upgrades for the requested version.
+				throw new Error('Missing defined versions');
+
+			// Save references to the native IndexedDB objects. They will be used by
+			// the proxies created the call to `.define()`.
+			this.#db = req.result;
+			upgrade.tx = req.transaction;
+
+			if (upgrade.tx === null)
+				// Will never happen; only for type-narrowing.
+				throw new Error('Only null when deleting');
+
+			for (let version = oldVersion + 1; version <= newVersion; version++) {
+				const callback = upgrade.versions.get(version);
+				if (!callback)
+					throw new Error(`Missing callback for version ${version}`);
+
+				lastUpgrade = version;
+				await callback();
+
+				if (!this.#upgrade)
+					throw new Error('Upgrades exited early');
+				if (upgrade.aborted)
+					break;
+			}
+
+			upgradesFinished = true;
+		};
+
+		const upgradePromise = new Promise((resolve, reject) => {
+			req.addEventListener('upgradeneeded', (event) => {
+				handleUpgrade(event).then(resolve, reject);
+			}, { once: true });
+		});
+
+		return new NiceIDBRequest(req, async (db) => {
+			/** @type {Error[]} */
+			const errors = [];
+
+			if (upgradesNeeded) {
+				if (!upgradesFinished)
+					errors.push(new Error('Upgrades exited early', { cause: { lastUpgrade } }));
+				await upgradePromise.catch(err => errors.push(err));
+			}
+
+			try {
+				if (errors.length)
+					throw new AggregateError(errors, 'Failed to open database');
+			} catch (error) {
+				db.close();
+				this.#db = undefined;
+				throw error;
+			} finally {
+				upgrade.revokeProxies();
+				this.#upgrade = undefined;
+			}
+
+			return (this.#db = db, this);
+		});
 	}
 
 	/**
@@ -97,6 +374,8 @@ export class NiceIDB {
 	 * @see {@link IDBDatabase.prototype.objectStoreNames}
 	 */
 	get storeNames() {
+		if (!this.#db)
+			throw new Error('Connection to database has not been opened');
 		return getStrings(this.#db.objectStoreNames);
 	}
 
@@ -106,6 +385,8 @@ export class NiceIDB {
 	 * @param {boolean | AddEventListenerOptions} options
 	 */
 	addEventListener(type, listener, options) {
+		if (!this.#db)
+			throw new Error('Connection to database has not been opened');
 		return this.#db.addEventListener(type, listener, options);
 	}
 
@@ -115,45 +396,9 @@ export class NiceIDB {
 	 * @param {boolean | EventListenerOptions} options
 	 */
 	removeEventListener(type, listener, options) {
+		if (!this.#db)
+			throw new Error('Connection to database has not been opened');
 		return this.#db.removeEventListener(type, listener, options);
-	}
-
-	/**
-	 * Create a new object store.
-	 * @param {string} name
-	 * @param {IDBObjectStoreParameters} [options]
-	 * @returns {NiceIDBObjectStore} An object store instance.
-	 */
-	createStore(name, options) {
-		const store = this.#db.createObjectStore(name, options);
-		return new NiceIDBObjectStore(store);
-	}
-
-	/**
-	 * @param {string} name
-	 */
-	deleteStore(name) {
-		return this.#db.deleteObjectStore(name);
-	}
-
-	/**
-	 * Create a new object store.
-	 * @deprecated
-	 * @param {string} name
-	 * @param {IDBObjectStoreParameters} [options]
-	 * @returns {NiceIDBObjectStore} An object store instance.
-	 */
-	createObjectStore(name, options) {
-		const store = this.#db.createObjectStore(name, options);
-		return new NiceIDBObjectStore(store);
-	}
-
-	/**
-	 * @deprecated
-	 * @param {string} name
-	 */
-	deleteObjectStore(name) {
-		return this.#db.deleteObjectStore(name);
 	}
 
 	/**
@@ -173,6 +418,8 @@ export class NiceIDB {
 	 * @returns {NiceIDBTransaction} A transaction instance.
 	 */
 	transaction(stores, mode, options) {
+		if (!this.#db)
+			throw new Error('Connection to database has not been opened');
 		if (mode === 'ro')
 			mode = 'readonly';
 		else if (mode === 'rw')
@@ -187,24 +434,37 @@ export class NiceIDB {
 	 * @param {string} name - Name of the object store.
 	 * @param {TransactionMode} [mode] - The transaction mode to access the object store; defaults to "readonly".
 	 * @param {IDBTransactionOptions} [opts] - Defaults to `{ durability: "default" }`
-	 * @returns {NiceIDBObjectStore} The object store instance.
+	 * @returns {NiceIDBStore} The object store instance.
 	 */
 	store(name, mode, opts) {
+		if (!this.#db)
+			throw new Error('Connection to database has not been opened');
 		if (mode === 'ro')
 			mode = 'readonly';
 		else if (mode === 'rw')
 			mode = 'readwrite';
 		const tx = this.#db.transaction(name, mode, opts);
 		const store = tx.objectStore(name);
-		return new NiceIDBObjectStore(store);
+		return new NiceIDBStore(store);
 	}
 
 	close() {
+		if (!this.#db)
+			throw new Error('Connection to database has not been opened');
 		this.#db.close();
 	}
 
 	[Symbol.dispose]() {
+		if (!this.#db)
+			throw new Error('Connection to database has not been opened');
 		this.#db.close();
+	}
+
+	SELF_DESTRUCT() {
+		if (this.#db)
+			this.#db.close();
+		const req = window.indexedDB.deleteDatabase(this.#name);
+		return new NiceIDBRequest(req, () => null);
 	}
 
 	/**
@@ -230,197 +490,18 @@ export class NiceIDB {
 	/**
 	 * Delete a database.
 	 * @param {string} name
-	 * @returns {Promise<null>} A Promise that resolves to `null` if successful.
 	 */
-	static async delete(name) {
-		return promisify(window.indexedDB.deleteDatabase(name)).then(() => null);
+	static delete(name) {
+		const req = indexedDB.deleteDatabase(name);
+		return new NiceIDBRequest(req, () => null);
 	}
 
 	/**
-	 * @param {string} name - The name of the database to define the schema for.
-	 * @param {DefineDatabaseSchema} defineSchema - A callback defining the database schema for each version of it.
-	 * @returns {Promise<NiceIDB>} The upgraded database instance.
+	 * @param {string} name - Name of the database to open.
+	 * @param {number} [version] - Optional version number.
 	 */
-	static async define(name, defineSchema) {
-		// Declare variables for our instances.
-		/** @type {NiceIDB | undefined} */ let db;
-		/** @type {NiceIDBTransaction | undefined} */ let tx;
-
-		// Create proxies that will access our instances.
-
-		const dbProxy = new Proxy(Object.create(NiceIDB.prototype), {
-			get(_, prop) {
-				if (!db)
-					throw new ReferenceError('Can only use database within `defineVersion` callbacks');
-				const value = Reflect.get(db, prop);
-				if (typeof value === 'function')
-					return value.bind(db);
-			},
-		});
-
-		const txProxy = new Proxy(Object.create(NiceIDBTransaction.prototype), {
-			get(_, prop) {
-				if (!tx)
-					throw new ReferenceError('Can only use transaction within `defineVersion` callbacks');
-				const value = Reflect.get(tx, prop);
-				if (typeof value === 'function')
-					return value.bind(tx);
-			},
-		});
-
-		/** @type {UpgradeCallback[]} */
-		const allUpgrades = [];
-		let highestDefinedVersion = 0;
-
-		/** @satisfies {DefineVersionedUpgrade} */
-		const defineVersion = (versionNumber, upgrade) => {
-			if (!Number.isInteger(versionNumber))
-				throw new TypeError('Expected integer for version number');
-			if (typeof upgrade !== 'function')
-				throw new TypeError('Expected function for upgrade callback', { cause: { type: typeof upgrade } });
-			if (versionNumber !== highestDefinedVersion + 1) {
-				throw new RangeError('Unexpected version number', {
-					cause: { expected: highestDefinedVersion + 1, received: versionNumber },
-				});
-			}
-			highestDefinedVersion++;
-			allUpgrades.push(upgrade);
-		};
-
-		// Gather all the upgrade callbacks from each defined version.
-
-		try {
-			// Provide the database and transaction proxies as arguments.
-			defineSchema(defineVersion, dbProxy, txProxy);
-		} catch (error) {
-			if (('isError' in Error && Error.isError(error)) || error instanceof Error) {
-				throw new Error('Error defining schema', { cause: error });
-			} else {
-				throw new Error('Unknown error defining schema', { cause: error });
-			}
-		}
-
-		const existing = await window.indexedDB.databases()
-			.then(dbs => dbs.find(db => db.name === name));
-		const existingVersion = existing?.version ?? 0;
-		const versionDelta = highestDefinedVersion - existingVersion;
-
-		// Check that all the previous versions of the database have been defined.
-		if (versionDelta < 0) {
-			throw new Error('Current version is greater than highest defined version', {
-				cause: { existing: existingVersion, highestDefined: highestDefinedVersion },
-			});
-		}
-
-		// Make a request to open the latest version.
-		const request = window.indexedDB.open(name, highestDefinedVersion);
-
-		return new Promise((resolve, reject) => {
-			/** @type {() => void} */
-			let unlisten;
-
-			/** @satisfies {((this: IDBOpenDBRequest, event: IDBVersionChangeEvent) => void) | undefined} */
-			const handleUpgrade = (versionDelta !== 0 || undefined) && async function () {
-				// Create the instances used by the proxies.
-				db = new NiceIDB(request.result);
-				tx = new NiceIDBTransaction(/** @type {IDBTransaction} */(request.transaction));
-
-				const pendingUpgrades = allUpgrades.slice(existingVersion);
-
-				for (const [i, callback] of pendingUpgrades.entries()) {
-					const version = i + 1;
-					const promise = new Promise(resolve => resolve(callback()));
-					try {
-						await promise;
-					} catch (error) {
-						return reject(
-							new Error('Failed upgrade', { cause: { version, error } }),
-						);
-					}
-				}
-			};
-
-			/** @satisfies {EventListener} */
-			const handleSuccess = () => {
-				unlisten();
-				resolve(db ?? new NiceIDB(request.result));
-			};
-
-			/** @satisfies {EventListener} */
-			const handleFailure = (event) => {
-				unlisten();
-				const { error, source, transaction } = request;
-				/** @satisfies {NiceIDBErrorInfo} */
-				const cause = { error, event, request, source, transaction };
-				reject(new Error('Failed to open database', { cause }));
-			};
-
-			unlisten = () => {
-				request.removeEventListener('success', handleSuccess);
-				request.removeEventListener('error', handleFailure);
-				request.removeEventListener('blocked', handleFailure);
-				handleUpgrade && request.removeEventListener('upgradeneeded', handleUpgrade);
-			};
-
-			request.addEventListener('success', handleSuccess);
-			request.addEventListener('error', handleFailure);
-			request.addEventListener('blocked', handleFailure);
-			handleUpgrade && request.addEventListener('upgradeneeded', handleUpgrade);
-		});
-	}
-
-	/**
-	 * Open a database.
-	 * @param {string} name - Name of the database.
-	 * @param {number} [version] - A positive integer. If ommitted and the database already exists, this method will open a connection to it.
-	 * @param {NiceIDBUpgradeCallback} [upgradeHandler] - An optional callback to handle the "upgradeneeded" event.
-	 * @returns {Promise<NiceIDB>} A Promise that resolves to a database instance.
-	 */
-	static async open(name, version, upgradeHandler) {
-		/** @type {IDBOpenDBRequest} */
-		const request = window.indexedDB.open(name, version);
-		/** @type {NiceIDB} */
-		let db;
-
-		/** @satisfies {((this: IDBOpenDBRequest, event: IDBVersionChangeEvent) => void)} */
-		const handleUpgrade = function (event) {
-			if (typeof upgradeHandler !== 'function')
-				throw new RangeError('Cannot open database without handling "upgradeneeded" event', { cause: event });
-			db = new NiceIDB(request.result);
-			const tx = new NiceIDBTransaction(/** @type {IDBTransaction} */(request.transaction));
-			upgradeHandler(db, tx, event);
-		};
-
-		return new Promise((resolve, reject) => {
-			/** @type {() => void} */
-			let unlisten;
-
-			/** @type {EventListener} */
-			const handleSuccess = () => {
-				unlisten();
-				resolve(db ?? new NiceIDB(request.result));
-			};
-
-			/** @type {EventListener} */
-			const handleFailure = (event) => {
-				unlisten();
-				const { error, source, transaction } = request;
-				/** @satisfies {NiceIDBErrorInfo} */
-				const cause = { error, event, request, source, transaction };
-				reject(new Error('Failed to open database', { cause }));
-			};
-
-			unlisten = () => {
-				request.removeEventListener('success', handleSuccess);
-				request.removeEventListener('error', handleFailure);
-				request.removeEventListener('blocked', handleFailure);
-				request.removeEventListener('upgradeneeded', handleUpgrade);
-			};
-
-			request.addEventListener('success', handleSuccess);
-			request.addEventListener('error', handleFailure);
-			request.addEventListener('blocked', handleFailure);
-			request.addEventListener('upgradeneeded', handleUpgrade);
-		});
+	static open(name, version) {
+		const req = indexedDB.open(name, version);
+		return new NiceIDBRequest(req, db => new NiceIDB(db));
 	}
 }

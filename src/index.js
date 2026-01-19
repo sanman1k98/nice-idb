@@ -1,12 +1,11 @@
 /**
- * @typedef {import('./db.js').NiceIDBUpgradeCallback} NiceIDBUpgradeCallback
- * @typedef {import('./db.js').DefineDatabaseSchema} DefineDatabaseSchema
+ * @typedef {import('./db.js').DefineDatabaseVersions} DefineDatabaseVersions
  * @typedef {import('./db.js').DefineVersionedUpgrade} DefineVersionedUpgrade
  * @typedef {import('./db.js').UpgradeCallback} UpgradeCallback
  *
  * @typedef {import('./tx.js').NiceIDBTransaction} NiceIDBTransaction
  *
- * @typedef {import('./store.js').NiceIDBObjectStore} NiceIDBObjectStore
+ * @typedef {import('./store.js').NiceIDBStore} NiceIDBStore
  *
  * @typedef {import('./idx.js').NiceIDBIndex} NiceIDBIndex
  *
