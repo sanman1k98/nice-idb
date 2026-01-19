@@ -223,3 +223,80 @@ export async function* getAsyncIterableRecords(
 
 	yield* generator();
 }
+
+/**
+ * @template {EventTarget} T
+ * @template {string} const E = Parameters<T['addEventListener']>[0]
+ * @param {T} target
+ * @param {{ types: E[], signal?: AbortSignal }} opts
+ * @returns {AsyncIterableIterator<Event>} Events fired on the `target`.
+ */
+export async function* getAsyncIterableEvents(target, opts) {
+	const { types, signal } = opts;
+
+	if (!(target instanceof EventTarget))
+		throw new TypeError('Expected target to be an instance of EventTarget');
+	if (!Array.isArray(types))
+		throw new TypeError('Expected array of event names for opts.types');
+	if (!types.length)
+		throw new RangeError('Specify at least one event');
+	if (types.some(type => typeof type !== 'string'))
+		throw new TypeError('All event types should be strings');
+	if (signal && !(signal instanceof AbortSignal))
+		throw new TypeError('Expected opts.signal to be an AbortSignal');
+
+	/** @type {((value: IteratorYieldResult<Event>) => void)[]} */
+	const resolvers = [];
+	/** @type {Promise<IteratorYieldResult<Event>>[]} */
+	const pending = [];
+
+	/** @type {() => (value: IteratorYieldResult<Event>) => void} */
+	const getResolver = () => {
+		const resolve = resolvers.shift();
+		if (resolve)
+			return resolve;
+		const p = Promise.withResolvers();
+		pending.push(p.promise);
+		return p.resolve;
+	};
+
+	/** @type {() => Promise<IteratorYieldResult<Event>>} */
+	const getPending = () => {
+		const promise = pending.shift();
+		if (promise)
+			return promise;
+		const p = Promise.withResolvers();
+		resolvers.push(p.resolve);
+		return p.promise;
+	};
+
+	/** @satisfies {EventListener} */
+	const handleEvent = (event) => {
+		const resolve = getResolver();
+		resolve({ value: event, done: false });
+	};
+
+	/** @satisfies {AsyncIterableIterator<Event>['next']} */
+	const next = () => {
+		return getPending();
+	};
+
+	/** @satisfies {() => Promise<IteratorResult<Event>>} */
+	const cleanup = () => {
+		for (const type of types)
+			target.removeEventListener(type, handleEvent);
+		return Promise.resolve({ value: undefined, done: true });
+	};
+
+	for (const type of types)
+		target.addEventListener(type, handleEvent);
+
+	/** @satisfies {AsyncIterableIterator<Event>} */
+	yield* {
+		next,
+		return: cleanup,
+		[Symbol.asyncIterator]() {
+			return this;
+		},
+	};
+};
