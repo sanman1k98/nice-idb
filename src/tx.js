@@ -15,6 +15,8 @@ export class NiceIDBTransaction {
 	#event;
 	/** @type {boolean} */
 	#finished;
+	/** @type {boolean} */
+	#aborted;
 
 	/**
 	 * @param {IDBTransaction} tx - The transaction instance to wrap.
@@ -22,14 +24,16 @@ export class NiceIDBTransaction {
 	constructor(tx) {
 		this.#tx = tx;
 		this.#finished = false;
+		this.#aborted = false;
 
 		this.#event = new Promise((resolve) => {
 			/** @satisfies {EventListener} */
 			const handleEvent = (event) => {
-				resolve(event);
 				this.#finished = true;
+				this.#aborted = event.type === 'abort';
 				tx.removeEventListener('complete', handleEvent);
 				tx.removeEventListener('abort', handleEvent);
+				resolve(event);
 			};
 
 			const opts = { once: true, passive: true };
@@ -54,8 +58,13 @@ export class NiceIDBTransaction {
 	}
 
 	/**
-	 * List of stores in the scope of this transaction.
-	 * @deprecated
+	 * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
+	 */
+	get aborted() {
+		return this.#aborted;
+	}
+
+	/**
 	 * @see {@link IDBTransaction.prototype.objectStoreNames}
 	 */
 	get stores() {
@@ -76,6 +85,7 @@ export class NiceIDBTransaction {
 
 	abort() {
 		this.#tx.abort();
+		this.#aborted = true;
 	}
 
 	/**
