@@ -74,6 +74,7 @@ export class NiceIDBEventTarget {
  *
  * @template {IDBRequest} R
  * @template [TResolved = R['result']]
+ * @template [TRejected = never]
  * @implements {PromiseLike<TResolved>}
  * @extends {NiceIDBEventTarget<R, R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap>}
  */
@@ -85,8 +86,9 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 	/**
 	 * @param {R} request
 	 * @param {(value: R['result']) => TResolved | PromiseLike<TResolved>} [onfulfilled]
+	 * @param {(reason: any) => PromiseLike<TRejected>} [onrejected]
 	 */
-	constructor(request, onfulfilled) {
+	constructor(request, onfulfilled, onrejected) {
 		super(request);
 		this.#req = request;
 
@@ -106,6 +108,8 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 			const { result, error } = this.#req;
 			if (event.type === 'success')
 				return onfulfilled ? onfulfilled(result) : result;
+			else if (onrejected)
+				return onrejected(error);
 			throw error;
 		});
 	}
