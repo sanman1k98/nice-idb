@@ -3,6 +3,7 @@
 	"type": "module",
 	"packageManager": "pnpm@10.16.1",
 	"imports": {
+		"#nice-idb/*": "./src/*",
 		"#types": {
 			"types": "./src/types.d.ts"
 		}
@@ -28,14 +29,17 @@
 	],
 	"scripts": {
 		"lint": "eslint",
-		"build": "tsc -p tsconfig.types.json"
+		"build": "tsc -p tsconfig.types.json",
+		"test:browser": "vitest"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^6.7.3",
+		"@vitest/browser-webdriverio": "^4.0.18",
 		"eslint": "^9.39.2",
 		"lint-staged": "^16.2.7",
 		"simple-git-hooks": "^2.13.1",
-		"typescript": "^5.9.3"
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
 	},
 	"simple-git-hooks": {
 		"pre-commit": "pnpm lint-staged"
