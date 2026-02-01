@@ -100,13 +100,12 @@ export class NiceIDBEventTarget {
  * @template {IDBRequest} R
  * @template [TResolved = R['result']]
  * @template [TRejected = never]
- * @implements {PromiseLike<TResolved>}
+ * @implements {PromiseLike<TResolved | TRejected>}
  * @extends {NiceIDBEventTarget<R, R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap>}
  */
 export class NiceIDBRequest extends NiceIDBEventTarget {
 	/** @type {IDBRequest} */ #req;
-	/** @type {Promise<Event>} */ #event;
-	/** @type {Promise<TResolved>} */ #promise;
+	/** @type {Promise<TResolved | TRejected>} */ #promise;
 
 	/**
 	 * @param {R} request - the IDBRequest to wrap.
@@ -117,26 +116,21 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 		super(request);
 		this.#req = request;
 
-		this.#event = new Promise((resolve) => {
-			/** @satisfies {(this: IDBRequest, event: Event) => void} */
-			const handleEvent = function (event) {
+		const result = new Promise((resolve, reject) => {
+			/** @satisfies {EventListener} */
+			const handleEvent = (event) => {
 				request.removeEventListener('success', handleEvent);
 				request.removeEventListener('error', handleEvent);
-				resolve(event);
+				return event.type === 'success'
+					? resolve(request.result)
+					: reject(request.error);
 			};
 			const opts = { once: true };
 			request.addEventListener('success', handleEvent, opts);
 			request.addEventListener('error', handleEvent, opts);
 		});
 
-		this.#promise = this.#event.then((event) => {
-			const { result, error } = this.#req;
-			if (event.type === 'success')
-				return onfulfilled ? onfulfilled(result) : result;
-			else if (onrejected)
-				return onrejected(error);
-			throw error;
-		});
+		this.#promise = result.then(onfulfilled, onrejected);
 	}
 
 	get state() { return this.#req.readyState; }
@@ -171,7 +165,7 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 	/**
 	 * @template TResult1 = TResolved
 	 * @template TResult2 = never
-	 * @param {((value: TResolved) => TResult1 | PromiseLike<TResult1>) | null | undefined} [onfulfilled]
+	 * @param {((value: TResolved | TRejected) => TResult1 | PromiseLike<TResult1>) | null | undefined} [onfulfilled]
 	 * @param {((reason: any) => PromiseLike<TResult2>) | null | undefined} [onrejected]
 	 */
 	then(onfulfilled, onrejected) {
