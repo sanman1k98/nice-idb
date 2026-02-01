@@ -1,3 +1,5 @@
+import { NiceIDBTransaction } from './tx';
+
 /**
  * @template {EventTarget} T
  * @template [M = Record<string, Event>]
@@ -135,6 +137,17 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 				return onrejected(error);
 			throw error;
 		});
+	}
+
+	get state() { return this.#req.readyState; }
+
+	get tx() {
+		const tx = this.#req.transaction;
+		if (!tx)
+			return null;
+		if (tx?.mode === 'versionchange')
+			return new NiceIDBTransaction.Upgrade(tx);
+		return new NiceIDBTransaction(tx);
 	}
 
 	/**
