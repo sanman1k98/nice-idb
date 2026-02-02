@@ -313,7 +313,7 @@ export class NiceIDB {
 
 		let current = existing?.version ?? 0;
 
-		do {
+		while (current !== requested) {
 			const upgrade = versions.callbacks.get(++current);
 			if (!upgrade)
 				throw new Error('MissingUpgrade');
@@ -329,7 +329,7 @@ export class NiceIDB {
 				this.#request?.result.close();
 				this.#request = undefined;
 			}
-		} while (current !== requested);
+		}
 
 		versions.cleanup();
 		return await this.open();
@@ -471,7 +471,7 @@ export class NiceIDB {
 	 */
 	static delete(name) {
 		const req = indexedDB.deleteDatabase(name);
-		return new NiceIDBRequest(req, () => null);
+		return new NiceIDBRequest(req);
 	}
 }
 
