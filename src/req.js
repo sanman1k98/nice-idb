@@ -105,32 +105,21 @@ export class NiceIDBEventTarget {
  */
 export class NiceIDBRequest extends NiceIDBEventTarget {
 	/** @type {IDBRequest} */ #req;
-	/** @type {Promise<TResolved | TRejected>} */ #promise;
+
+	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
+	/** @type {(value: R['result']) => TResolved | PromiseLike<TResolved>} */ #onfulfilled;
+	/** @type {(reason: any) => TRejected | PromiseLike<TRejected>} */ #onrejected;
 
 	/**
 	 * @param {R} request - the IDBRequest to wrap.
 	 * @param {(value: R['result']) => TResolved | PromiseLike<TResolved>} [onfulfilled] - Optionally transform the `result` that the request will resolve to.
-	 * @param {(reason: any) => PromiseLike<TRejected>} [onrejected]
+	 * @param {(reason: any) => TRejected | PromiseLike<TRejected>} [onrejected]
 	 */
 	constructor(request, onfulfilled, onrejected) {
 		super(request);
 		this.#req = request;
-
-		const result = new Promise((resolve, reject) => {
-			/** @satisfies {EventListener} */
-			const handleEvent = (event) => {
-				request.removeEventListener('success', handleEvent);
-				request.removeEventListener('error', handleEvent);
-				return event.type === 'success'
-					? resolve(request.result)
-					: reject(request.error);
-			};
-			const opts = { once: true };
-			request.addEventListener('success', handleEvent, opts);
-			request.addEventListener('error', handleEvent, opts);
-		});
-
-		this.#promise = result.then(onfulfilled, onrejected);
+		this.#onfulfilled = onfulfilled ?? Promise.resolve;
+		this.#onrejected = onrejected ?? Promise.reject;
 	}
 
 	get state() { return this.#req.readyState; }
@@ -147,9 +136,7 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 	/**
 	 * Will be `true` when the underlying request is "pending".
 	 */
-	get pending() {
-		return this.#req.readyState === 'pending';
-	}
+	get pending() { return this.#req.readyState === 'pending'; }
 
 	/**
 	 * Another way to resolve the `result` of the underlying request.
@@ -158,25 +145,57 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 	 * const result = await niceRequest;
 	 * const alsoResult = await niceRequest.result;
 	 */
-	get result() {
-		return this.#promise;
-	}
+	get result() { return this.then(); }
 
 	/**
-	 * @template TResult1 = TResolved
-	 * @template TResult2 = never
+	 * @template [TResult1 = TResolved | TRejected]
+	 * @template [TResult2 = never]
 	 * @param {((value: TResolved | TRejected) => TResult1 | PromiseLike<TResult1>) | null | undefined} [onfulfilled]
-	 * @param {((reason: any) => PromiseLike<TResult2>) | null | undefined} [onrejected]
+	 * @param {((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined} [onrejected]
 	 */
 	then(onfulfilled, onrejected) {
-		return this.#promise.then(onfulfilled, onrejected);
+		if (this.#result) {
+			return Promise.resolve(this.#result)
+				.then(onfulfilled, onrejected);
+		}
+
+		if (this.pending || this.#req instanceof IDBOpenDBRequest) {
+			this.#result = new Promise((resolve) => {
+				/** @type {EventListener} */
+				const listener = (event) => {
+					this.#req.removeEventListener('success', listener);
+					this.#req.removeEventListener('error', listener);
+					const { result, error } = this.#req;
+					if (event.type === 'success')
+						return resolve(this.#onfulfilled(result));
+					return resolve(this.#onrejected(error));
+				};
+				const opts = { once: true };
+				this.#req.addEventListener('success', listener, opts);
+				this.#req.addEventListener('error', listener, opts);
+			});
+		} else {
+			this.#result = this.#req.error
+				? this.#onrejected(this.#req.error)
+				: this.#onfulfilled(this.#req.result);
+		}
+
+		return Promise.resolve(this.#result)
+			.then(onfulfilled, onrejected);
 	}
 
 	/**
-	 * @template TResult = never
-	 * @param {((reason: any) => PromiseLike<TResult>) | null | undefined} [onrejected]
+	 * @template [TResult2 = never]
+	 * @param {((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined} [onrejected]
 	 */
 	catch(onrejected) {
-		return this.#promise.catch(onrejected);
+		return this.then(undefined, onrejected);
+	}
+
+	done() {
+		return this.then(
+			result => ({ result, error: null }),
+			error => ({ result: null, error }),
+		);
 	}
 }
