@@ -458,13 +458,6 @@ export class NiceIDB {
 		return new NiceIDBRequest(req);
 	}
 
-	SELF_DESTRUCT() {
-		if (this.#db)
-			this.#db.close();
-		const req = window.indexedDB.deleteDatabase(this.#name);
-		return new NiceIDBRequest(req, () => null);
-	}
-
 	/**
 	 * Compare two keys.
 	 * @param {IDBValidKey} a
