@@ -1,5 +1,6 @@
+import type { Mock } from 'vitest';
 import { NiceIDB } from '#nice-idb/db.js';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { databaseExists, delay, deleteAllDatabases } from './utils';
 
 describe('basic usage', () => {
@@ -47,6 +48,47 @@ describe('defining upgrades', () => {
 			expect(db.transaction('logs').store('logs').indexNames).toContain('types');
 
 			db.close();
+		});
+	});
+
+	describe('upgrading existing databases', () => {
+		let testDB: NiceIDB;
+
+		beforeEach(async () => {
+			const existingDB = new NiceIDB('test-db')
+				.define((version, db) => {
+					version(1, async () => {
+						const logs = db.createStore('logs', { autoIncrement: true });
+						logs.createIndex('types', 'type');
+						await logs.add({ type: 'info', message: 'Hello, World!' });
+					});
+				});
+			await existingDB.upgrade();
+			existingDB.close();
+
+			testDB = new NiceIDB('test-db');
+		});
+
+		afterEach(async () => {
+			testDB.close();
+		});
+
+		it('will only execute upgrades if needed', async () => {
+			let callback: Mock;
+
+			testDB.define((version, db) => {
+				version(1, callback = vi.fn(async () => {
+					const logs = db.createStore('logs', { autoIncrement: true });
+					logs.createIndex('types', 'type');
+					await logs.add({ type: 'info', message: 'Hello, World!' });
+				}));
+			});
+
+			const spy = vi.spyOn(indexedDB, 'open');
+			await expect(testDB.upgrade()).resolves.toBeInstanceOf(NiceIDB);
+			expect(testDB.version).toBe(1);
+			expect(spy).toBeCalledTimes(1);
+			expect(callback!).not.toBeCalled();
 		});
 	});
 
