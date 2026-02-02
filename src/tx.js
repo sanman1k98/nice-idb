@@ -24,6 +24,11 @@ export class NiceIDBTransaction {
 	get aborted() { return this.#event?.type === 'abort'; }
 
 	/**
+	 * @returns {Promise<void>} A promise for when the transaction commits or aborts.
+	 */
+	get finish() { return this.#finish.then(() => {}); }
+
+	/**
 	 * List of stores in the scope of this transaction.
 	 * @see {@link IDBTransaction.prototype.objectStoreNames}
 	 */
