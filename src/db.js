@@ -99,8 +99,8 @@ export class NiceIDB {
 
 	/** @type {string} */ #name;
 	/** @type {IDBOpenDBRequest | undefined} */ #request;
+	/** @type {NiceIDBUpgrader | undefined} */ #upgrader;
 	/** @type {VersionsData | undefined} */ #versions;
-	/** @type {UpgradeState | undefined} */ #upgrade;
 
 	/** @type {IDBDatabase} */;
 	get #db() {
@@ -158,15 +158,14 @@ export class NiceIDB {
 	 * @param {string} name
 	 */
 	#deleteStore(name) {
-		const req = /** @type {IDBOpenDBRequest} */(this.#request);
-		return req.result.deleteObjectStore(name);
+		return this.#db.deleteObjectStore(name);
 	}
 
 	#createUpgradeableDatabaseProxy() {
 		/** @type {ProxyHandler<NiceIDBUpgradableDatabase>} */
 		const handler = {
 			get(target, k) {
-				if (!target.#upgrade)
+				if (!target.#upgrader)
 					throw new Error('Cannot access proxy outside of upgrade callback');
 				if (k === 'createStore')
 					return target.#createStore.bind(target);
@@ -181,12 +180,21 @@ export class NiceIDB {
 	}
 
 	#createUpgradeTransactionProxy() {
+		/** @type {IDBTransaction | undefined} */
+		let tx;
+		/** @type {NiceIDBUpgradeTransaction | undefined} */
+		let target;
+
 		/** @type {ProxyHandler<NiceIDBUpgradeTransaction>} */
 		const handler = {
 			get: (_, k) => {
-				if (!this.#upgrade)
+				if (!this.#upgrader)
 					throw new Error('Cannot access proxy outside of upgrade callback');
-				const target = this.#upgrade.tx;
+				const { transaction } = this.#upgrader;
+				if (!target || tx !== transaction) {
+					tx = /** @type {IDBTransaction} */(transaction);
+					target = new NiceIDB.UpgradeTransaction(tx);
+				}
 				const v = Reflect.get(target, k);
 				return typeof v === 'function' ? v.bind(target) : v;
 			},
@@ -305,46 +313,25 @@ export class NiceIDB {
 
 		let current = existing?.version ?? 0;
 
-		while (current++ !== requested) {
-			const upgrade = Promise.withResolvers();
-			const req = indexedDB.open(this.#name, current);
+		do {
+			const upgrade = versions.callbacks.get(++current);
+			if (!upgrade)
+				throw new Error('MissingUpgrade');
+			else if (typeof upgrade !== 'function')
+				throw new TypeError('InvalidUpgrade');
 
-			/** @type {(msg: string) => EventListener} */
-			const rejectEvent = msg =>
-				event => upgrade.reject(new Error(msg, { cause: { event } }));
-
-			req.addEventListener('blocked', rejectEvent('UpgradeBlocked'), { once: true });
-			req.addEventListener('abort', rejectEvent('UpgradeAbortedManually'), { once: true });
-			req.addEventListener('error', () => upgrade.reject(req.error), { once: true });
-
-			req.addEventListener('upgradeneeded', (event) => {
-				const callback = versions.callbacks.get(current);
-				if (typeof callback !== 'function')
-					return upgrade.reject(new TypeError('InvalidUpgrade', { cause: { version: current } }));
-
-				const upgradeTx = /** @type {IDBTransaction} */ (req.transaction);
-				const tx = new NiceIDB.UpgradeTransaction(upgradeTx);
-
-				// Used by upgrade proxies.
-				this.#upgrade = { event, running: current, tx };
-				this.#request = req;
-
-				const promise = new Promise(resolve => resolve(callback()));
-
-				upgrade.resolve(promise);
-			}, { once: true });
+			this.#request = indexedDB.open(this.#name, current);
+			this.#upgrader = NiceIDBUpgrader.handle(this.#request, upgrade);
 
 			try {
-				await upgrade.promise;
+				await this.#upgrader.finish;
 			} finally {
+				this.#request?.result.close();
 				this.#request = undefined;
-				if (req.result)
-					req.result.close();
 			}
-		}
+		} while (current !== requested);
 
 		versions.cleanup();
-
 		return await this.open();
 	}
 
@@ -485,5 +472,90 @@ export class NiceIDB {
 	static delete(name) {
 		const req = indexedDB.deleteDatabase(name);
 		return new NiceIDBRequest(req, () => null);
+	}
+}
+
+class NiceIDBUpgrader {
+	/** @type {PromiseWithResolvers<void>} */ #result;
+	/** @type {IDBOpenDBRequest} */ #request;
+	/** @type {UpgradeCallback} */ #callback;
+
+	get finish() {
+		return this.#result.promise
+			.finally(() => this.#unlisten());
+	}
+
+	get request() { return this.#request; }
+	get then() { return this.finish.then; }
+
+	/**
+	 * @param {IDBOpenDBRequest} req
+	 * @param {UpgradeCallback} cb
+	 */
+	constructor(req, cb) {
+		this.#result = Promise.withResolvers();
+		this.#request = req;
+		this.#callback = cb;
+		this.#listen();
+	}
+
+	/** @type {(event: IDBVersionChangeEvent) => void | Promise<void>} */
+	#handleError() {
+		this.#result.reject(this.#request?.error);
+	}
+
+	/** @type {(event: IDBVersionChangeEvent) => void | Promise<void>} */
+	#handleAbort(event) {
+		this.#result.reject(
+			new Error('UpgradeAborted', { cause: { event } }),
+		);
+	}
+
+	/** @type {(event: IDBVersionChangeEvent) => void | Promise<void>} */
+	#handleBlocked(event) {
+		this.#result.reject(
+			new Error('UpgradeBlocked', { cause: { event } }),
+		);
+	}
+
+	/** @type {(event: IDBVersionChangeEvent) => void | Promise<void>} */
+	#handleUpgrade() {
+		this.transaction = this.#request.transaction;
+		const promise = new Promise(resolve => resolve(this.#callback()));
+		this.#result.resolve(promise);
+	}
+
+	/** @type {(event: IDBVersionChangeEvent) => Promise<void>} */
+	async handleEvent(event) {
+		switch (event.type) {
+			case 'upgradeneeded': return this.#handleUpgrade(event);
+			case 'blocked': return this.#handleBlocked(event);
+			case 'abort': return this.#handleAbort(event);
+			case 'error': return this.#handleError(event);
+		}
+	}
+
+	/** @type {() => void} */
+	#unlisten() {
+		this.#request.removeEventListener('upgradeneeded', this);
+		this.#request.removeEventListener('blocked', this);
+		this.#request.removeEventListener('abort', this);
+		this.#request.removeEventListener('error', this);
+	}
+
+	/** @type {() => void} */
+	#listen() {
+		this.#request.addEventListener('upgradeneeded', this);
+		this.#request.addEventListener('blocked', this);
+		this.#request.addEventListener('abort', this);
+		this.#request.addEventListener('error', this);
+	}
+
+	/**
+	 * @param {IDBOpenDBRequest} req
+	 * @param {UpgradeCallback} cb
+	 */
+	static handle(req, cb) {
+		return new this(req, cb);
 	}
 }
