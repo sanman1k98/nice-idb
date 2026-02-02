@@ -1,4 +1,3 @@
-/** @import { NiceIDBErrorInfo } from './util.js' */
 import { NiceIDBStore } from './store.js';
 import { getStrings } from './util.js';
 
@@ -9,11 +8,26 @@ import { getStrings } from './util.js';
  * @implements {Disposable}
  */
 export class NiceIDBTransaction {
-	/** @type {IDBTransaction} */
-	#tx;
-	/** @type {Promise<Event>} */
-	#event;
-	/** @type {Event | undefined} */ #finish;
+	/** @type {IDBTransaction} */ #tx;
+	/** @type {Promise<Event>} */ #finish;
+	/** @type {Event | undefined} */ #event;
+
+	get error() { return this.#tx.error; }
+	get durability() { return this.#tx.durability; }
+	get mode() { return this.#tx.mode; }
+
+	/**
+	 * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
+	 */
+	get finished() { return !!this.#event; }
+	get committed() { return this.#event?.type === 'complete'; }
+	get aborted() { return this.#event?.type === 'abort'; }
+
+	/**
+	 * List of stores in the scope of this transaction.
+	 * @see {@link IDBTransaction.prototype.objectStoreNames}
+	 */
+	get storeNames() { return getStrings(this.#tx.objectStoreNames); }
 
 	/**
 	 * @param {IDBTransaction} tx - The transaction instance to wrap.
@@ -21,47 +35,29 @@ export class NiceIDBTransaction {
 	constructor(tx) {
 		this.#tx = tx;
 
-		this.#event = new Promise((resolve) => {
+		this.#finish = new Promise((resolve) => {
 			/** @satisfies {EventListener} */
 			const handleEvent = (event) => {
 				tx.removeEventListener('complete', handleEvent);
 				tx.removeEventListener('abort', handleEvent);
-				resolve(this.#finish = event);
+				resolve(this.#event = event);
 			};
-
 			const opts = { once: true, passive: true };
 			tx.addEventListener('complete', handleEvent, opts);
 			tx.addEventListener('abort', handleEvent, opts);
 		});
 	}
 
-	get durability() {
-		return this.#tx.durability;
-	}
-
-	get mode() {
-		return this.#tx.mode;
-	}
-
 	/**
-	 * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
+	 * Get an object store within the transaction's scope.
+	 * @param {string} name
+	 * @returns {NiceIDBStore} An object store instance.
 	 */
-	get finished() {
-		return !!this.#finish;
-	}
-
-	/**
-	 * @returns {boolean} Returns `true` if this transaction has been committed.
-	 */
-	get committed() {
-		return this.#finish?.type === 'complete';
-	}
-
-	/**
-	 * @returns {boolean} Returns `true` if this transaction has been aborted.
-	 */
-	get aborted() {
-		return this.#finish?.type === 'abort';
+	store(name) {
+		const store = this.#tx.objectStore(name);
+		return this.#tx.mode === 'versionchange'
+			? new NiceIDBStore.Upgradable(store, this.#tx)
+			: new NiceIDBStore(store);
 	}
 
 	/** @type {Record<string, NiceIDBStore> | undefined} */
@@ -89,22 +85,6 @@ export class NiceIDBTransaction {
 	}
 
 	/**
-	 * List of stores in the scope of this transaction.
-	 * @see {@link IDBTransaction.prototype.objectStoreNames}
-	 */
-	get storeNames() {
-		return getStrings(this.#tx.objectStoreNames);
-	}
-
-	get error() {
-		return this.#tx.error;
-	}
-
-	abort() {
-		this.#tx.abort();
-	}
-
-	/**
 	 * @param {keyof IDBTransactionEventMap} type
 	 * @param {(this: IDBTransaction, ev: Event) => any} listener
 	 * @param {boolean | AddEventListenerOptions} [options]
@@ -120,6 +100,10 @@ export class NiceIDBTransaction {
 	 */
 	removeEventListener(type, listener, options) {
 		return this.#tx.removeEventListener(type, listener, options);
+	}
+
+	abort() {
+		this.#tx.abort();
 	}
 
 	/**
@@ -144,38 +128,6 @@ export class NiceIDBTransaction {
 
 	[Symbol.dispose]() {
 		this.#tx.commit();
-	}
-
-	/**
-	 * Get an object store within the transaction's scope.
-	 * @param {string} name
-	 * @returns {NiceIDBStore} An object store instance.
-	 */
-	store(name) {
-		const store = this.#tx.objectStore(name);
-		return this.#tx.mode === 'versionchange'
-			? new NiceIDBStore.Upgradable(store, this.#tx)
-			: new NiceIDBStore(store);
-	}
-
-	/**
-	 * @returns {Promise<void>} A Promise that resolves when the transaction's "complete" event fires.
-	 */
-	async promise() {
-		return this.#event.then((event) => {
-			if (event.type === 'complete')
-				return Promise.resolve();
-
-			const { error } = this.#tx;
-			const [transaction, request, source] = [this.#tx, null, null];
-			/** @satisfies {NiceIDBErrorInfo} */
-			const cause = { event, error, transaction, request, source };
-			return Promise.reject(new Error('Transaction aborted', { cause }));
-		});
-	}
-
-	done() {
-		return this.promise();
 	}
 
 	static Upgrade = class NiceIDBUpgradeTransaction extends NiceIDBTransaction {
