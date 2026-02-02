@@ -116,13 +116,12 @@ describe('defining upgrades', () => {
 		beforeEach(async () => deleteAllDatabases());
 
 		it('can unexpectedly yield control when awaiting', async () => {
-			const db = new NiceIDB('test-db').define((version, db, tx) => {
+			const db = new NiceIDB('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
 					// WARN: awaiting a task can preempt the "upgradeneeded" event handler.
 					await delay(1);
-					expect(tx.finished).toBe(true);
 					await logs.add({ type: 'info', message: 'Hello, World!' });
 					expect.unreachable('The above line will throw an error since the upgrade transaction is finished');
 				});
@@ -130,12 +129,20 @@ describe('defining upgrades', () => {
 
 			// TODO: custom error with hints.
 			await expect(db.upgrade()).rejects.toThrowError('transaction is inactive or finished');
+
+			// The database connection should be closed.
+			expect(db.opened).toBe(false);
+			// But the upgrade won't have been aborted.
 			await expect(databaseExists('test-db')).resolves.toBe(true);
 
 			await expect(db.open()).resolves.toBeInstanceOf(NiceIDB);
 			expect(db.version).toBe(1);
+			// Creates store and index as part of the upgrade.
 			expect(db.storeNames).includes('logs');
-			await expect(db.store('logs').count()).resolves.toBe(0);
+			const logs = db.store('logs');
+			expect(logs.indexNames).includes('types');
+			// Failed to add a record, because the event handler was preempted.
+			await expect(logs.count()).resolves.toBe(0);
 
 			db.close();
 		});
