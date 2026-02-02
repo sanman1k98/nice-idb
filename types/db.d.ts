@@ -33,10 +33,16 @@
  */
 /**
  * @typedef {object} UpgradeState
- * @property {boolean} [aborted] - To keep track of whether the transaction was aborted between executing upgrade callbacks.
- * @property {IDBTransaction | null} [tx] - A reference to the "upgrade transaction".
- * @property {Map<number, UpgradeCallback>} versions - A map of version numbers to upgrade callbacks.
- * @property {() => void} revokeProxies - A function to call after handling the "upgradeneeded" event.
+ * @property {IDBVersionChangeEvent} event - The "upgradeneeded" event.
+ * @property {NiceIDBUpgradeTransaction} tx - Wrapped upgrade IDBTransaction instance used as target for proxy.
+ * @property {number | undefined} [running] - Set to `true` when the "upgradeneeded" event handler gets called.
+ * @property {any} [error] - An Error that occured when attempting to execute the upgrade callbacks.
+ */
+/**
+ * @typedef {object} VersionsData
+ * @property {Map<number, UpgradeCallback>} callbacks - All upgrade callbacks.
+ * @property {number} latest - The latest defined version.
+ * @property {() => void} cleanup - Call after executing all upgrades.
  */
 /** @typedef {'ro' | 'rw' | 'readonly' | 'readwrite'} TransactionMode */
 /**
@@ -100,25 +106,24 @@ export class NiceIDB implements Database, Disposable {
                 [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
             };
             "__#private@#tx": IDBTransaction;
-            "__#private@#event": Promise<Event>;
-            "__#private@#finished": boolean;
-            "__#private@#aborted": boolean;
+            "__#private@#finish": Promise<Event>;
+            "__#private@#event": Event | undefined;
+            get error(): DOMException | null;
             get durability(): IDBTransactionDurability;
             get mode(): IDBTransactionMode;
             get finished(): boolean;
+            get committed(): boolean;
             get aborted(): boolean;
+            get finish(): Promise<void>;
+            get storeNames(): readonly string[];
             "__#private@#storesProxy": Record<string, NiceIDBStore> | undefined;
             get stores(): {
                 [name: string]: NiceIDBStore;
             };
-            get storeNames(): readonly string[];
-            get error(): DOMException | null;
-            abort(): void;
             addEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | AddEventListenerOptions): void;
             removeEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | EventListenerOptions): void;
+            abort(): void;
             commit(): void;
-            promise(): Promise<void>;
-            done(): Promise<void>;
             [Symbol.dispose](): void;
         };
         Upgrade: /*elided*/ any;
@@ -168,35 +173,59 @@ export class NiceIDB implements Database, Disposable {
      * Delete a database.
      * @param {string} name
      */
-    static delete(name: string): NiceIDBRequest<IDBOpenDBRequest, null>;
+    static delete(name: string): NiceIDBRequest<IDBOpenDBRequest, IDBDatabase, never>;
     /**
-     * @param {string} name - Name of the database to open.
-     * @param {number} [version] - Optional version number.
+     * @param {string} name - A database name.
      */
-    static open(name: string, version?: number): NiceIDBRequest<IDBOpenDBRequest, NiceIDB>;
-    /**
-     * @param {IDBDatabase | string} db - A database name or instance.
-     */
-    constructor(db: IDBDatabase | string);
+    constructor(name: string);
     /**
      * Returns `true` when there is an active connection to the underlying database.
      */
     get opened(): boolean;
+    /**
+     * Returns `true` if manually closed with `NiceIDB.prototype.close()`.
+     */
+    get closed(): boolean;
     get name(): string;
     get version(): number;
     /**
+     * Define each version of the database with callbacks that make changes to
+     * its structure. The callbacks will be used when opening the database to
+     * handle the "upgradeneeded" event.
+     *
+     * @example
+     * const db = new NiceIDB('my-app-db')
+     *   .define((version, db, tx) => {
+     *     version(1, () => {
+     *       const logs = db.createStore('logs', { autoincrement: true });
+     *       logs.createIndex('types', 'type');
+     *       logs.createIndex('messages', 'message');
+     *     });
+     *     version(2, () => {
+     *       const logs = tx.store('logs');
+     *       logs.createIndex('scopes', 'scope');
+     *     });
+     *   });
+     *
+     * @example
+     * const db = new NiceIDB('my-app-db')
+     *   .define((version, db, tx) => {
+     *     // This will throw an error.
+     *     const currentVersion = db.version;
+     *     version(1, () => {
+     *       // This is OK.
+     *       const currentVersion = db.version;
+     *     });
+     *   });
+     *
      * @param {DefineDatabaseVersions} defineVersions
      */
     define(defineVersions: DefineDatabaseVersions): this;
     /**
-     * Request to open a connection to this database.
+     * Open and upgrade the database using upgrade callbacks.
      *
      * @example
-     * // Open an existing database.
-     * const db = await new NiceIDB('my-app-db').open();
-     *
-     * @example
-     * // Define versions before opening.
+     * // Define upgrade callbacks for each version.
      * const db = new NiceIDB('my-app-db')
      *   .define((version, db) => {
      *     version(1, () => {
@@ -206,8 +235,19 @@ export class NiceIDB implements Database, Disposable {
      *     });
      *   });
      *
-     * // Will open the last defined version.
-     * await db.open();
+     * // Will open and execute the required upgrades to get to latest vesrion.
+     * await db.upgrade();
+     *
+     * @param {number} [version] - The the last defined version, if not specified.
+     * @returns {Promise<this>} The database with the upgrades applied.
+     */
+    upgrade(version?: number): Promise<this>;
+    /**
+     * Request to open a connection to this database.
+     *
+     * @example
+     * // Open an existing database.
+     * const db = await new NiceIDB('my-app-db').open();
      *
      * @example
      * // Call and attach event listeners.
@@ -215,8 +255,9 @@ export class NiceIDB implements Database, Disposable {
      *   console.error('blocked from opening database');
      *   // Handle the event...
      * });
-     * @param {number} [version] - If not specified, will be the last defined version or the existing version.
-     * @returns {NiceIDBRequest<IDBOpenDBRequest, this>} A reference to `this`.
+     *
+     * @param {number} [version] - Will be the existing version if not specified.
+     * @returns {NiceIDBRequest<IDBOpenDBRequest, this>} A wrapped open request that resolves to `this`.
      */
     open(version?: number): NiceIDBRequest<IDBOpenDBRequest, this>;
     /**
@@ -263,7 +304,7 @@ export class NiceIDB implements Database, Disposable {
      */
     store(name: string, mode?: TransactionMode, opts?: IDBTransactionOptions): NiceIDBStore;
     close(): void;
-    SELF_DESTRUCT(): NiceIDBRequest<IDBOpenDBRequest, null>;
+    destroy(): NiceIDBRequest<IDBOpenDBRequest, IDBDatabase, never>;
     [Symbol.dispose](): void;
     #private;
 }
@@ -296,21 +337,35 @@ export type NiceIDBUpgradeTransaction = InstanceType<typeof NiceIDBTransaction.U
 export type NiceIDBUpgradableStore = InstanceType<typeof NiceIDBStore.Upgradable>;
 export type UpgradeState = {
     /**
-     * - To keep track of whether the transaction was aborted between executing upgrade callbacks.
+     * - The "upgradeneeded" event.
      */
-    aborted?: boolean;
+    event: IDBVersionChangeEvent;
     /**
-     * - A reference to the "upgrade transaction".
+     * - Wrapped upgrade IDBTransaction instance used as target for proxy.
      */
-    tx?: IDBTransaction | null;
+    tx: NiceIDBUpgradeTransaction;
     /**
-     * - A map of version numbers to upgrade callbacks.
+     * - Set to `true` when the "upgradeneeded" event handler gets called.
      */
-    versions: Map<number, UpgradeCallback>;
+    running?: number | undefined;
     /**
-     * - A function to call after handling the "upgradeneeded" event.
+     * - An Error that occured when attempting to execute the upgrade callbacks.
      */
-    revokeProxies: () => void;
+    error?: any;
+};
+export type VersionsData = {
+    /**
+     * - All upgrade callbacks.
+     */
+    callbacks: Map<number, UpgradeCallback>;
+    /**
+     * - The latest defined version.
+     */
+    latest: number;
+    /**
+     * - Call after executing all upgrades.
+     */
+    cleanup: () => void;
 };
 export type TransactionMode = "ro" | "rw" | "readonly" | "readwrite";
 import { NiceIDBRequest } from './req.js';

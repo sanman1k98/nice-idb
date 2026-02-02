@@ -34,24 +34,27 @@ export class NiceIDBTransaction implements Transaction, Disposable {
                 iterKeys(opts?: import("./util.js").CursorOptions): AsyncIterable<IDBCursor>;
                 [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
             };
-            /** @type {IDBTransaction} */
-            "__#private@#tx": IDBTransaction;
-            /** @type {Promise<Event>} */
-            "__#private@#event": Promise<Event>;
-            /** @type {boolean} */
-            "__#private@#finished": boolean;
-            /** @type {boolean} */
-            "__#private@#aborted": boolean;
+            /** @type {IDBTransaction} */ "__#private@#tx": IDBTransaction;
+            /** @type {Promise<Event>} */ "__#private@#finish": Promise<Event>;
+            /** @type {Event | undefined} */ "__#private@#event": Event | undefined;
+            get error(): DOMException | null;
             get durability(): IDBTransactionDurability;
             get mode(): IDBTransactionMode;
             /**
              * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
              */
             get finished(): boolean;
-            /**
-             * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
-             */
+            get committed(): boolean;
             get aborted(): boolean;
+            /**
+             * @returns {Promise<void>} A promise for when the transaction commits or aborts.
+             */
+            get finish(): Promise<void>;
+            /**
+             * List of stores in the scope of this transaction.
+             * @see {@link IDBTransaction.prototype.objectStoreNames}
+             */
+            get storeNames(): readonly string[];
             /** @type {Record<string, NiceIDBStore> | undefined} */
             "__#private@#storesProxy": Record<string, NiceIDBStore> | undefined;
             /**
@@ -62,13 +65,6 @@ export class NiceIDBTransaction implements Transaction, Disposable {
             get stores(): {
                 [name: string]: NiceIDBStore;
             };
-            /**
-             * List of stores in the scope of this transaction.
-             * @see {@link IDBTransaction.prototype.objectStoreNames}
-             */
-            get storeNames(): readonly string[];
-            get error(): DOMException | null;
-            abort(): void;
             /**
              * @param {keyof IDBTransactionEventMap} type
              * @param {(this: IDBTransaction, ev: Event) => any} listener
@@ -81,6 +77,7 @@ export class NiceIDBTransaction implements Transaction, Disposable {
              * @param {boolean | EventListenerOptions} [options]
              */
             removeEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | EventListenerOptions): void;
+            abort(): void;
             /**
              * A method to explicitly commit the transaction. This is the same method
              * that will be called when a transaction is assigned to a variable declared
@@ -98,11 +95,6 @@ export class NiceIDBTransaction implements Transaction, Disposable {
              * ```
              */
             commit(): void;
-            /**
-             * @returns {Promise<void>} A Promise that resolves when the transaction's "complete" event fires.
-             */
-            promise(): Promise<void>;
-            done(): Promise<void>;
             [Symbol.dispose](): void;
         };
         Upgrade: /*elided*/ any;
@@ -111,16 +103,30 @@ export class NiceIDBTransaction implements Transaction, Disposable {
      * @param {IDBTransaction} tx - The transaction instance to wrap.
      */
     constructor(tx: IDBTransaction);
+    get error(): DOMException | null;
     get durability(): IDBTransactionDurability;
     get mode(): IDBTransactionMode;
     /**
      * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
      */
     get finished(): boolean;
-    /**
-     * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
-     */
+    get committed(): boolean;
     get aborted(): boolean;
+    /**
+     * @returns {Promise<void>} A promise for when the transaction commits or aborts.
+     */
+    get finish(): Promise<void>;
+    /**
+     * List of stores in the scope of this transaction.
+     * @see {@link IDBTransaction.prototype.objectStoreNames}
+     */
+    get storeNames(): readonly string[];
+    /**
+     * Get an object store within the transaction's scope.
+     * @param {string} name
+     * @returns {NiceIDBStore} An object store instance.
+     */
+    store(name: string): NiceIDBStore;
     /**
      * @see {@link IDBTransaction.prototype.objectStoreNames}
      * Access stores in the scope of this transaction.
@@ -129,13 +135,6 @@ export class NiceIDBTransaction implements Transaction, Disposable {
     get stores(): {
         [name: string]: NiceIDBStore;
     };
-    /**
-     * List of stores in the scope of this transaction.
-     * @see {@link IDBTransaction.prototype.objectStoreNames}
-     */
-    get storeNames(): readonly string[];
-    get error(): DOMException | null;
-    abort(): void;
     /**
      * @param {keyof IDBTransactionEventMap} type
      * @param {(this: IDBTransaction, ev: Event) => any} listener
@@ -148,6 +147,7 @@ export class NiceIDBTransaction implements Transaction, Disposable {
      * @param {boolean | EventListenerOptions} [options]
      */
     removeEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | EventListenerOptions): void;
+    abort(): void;
     /**
      * A method to explicitly commit the transaction. This is the same method
      * that will be called when a transaction is assigned to a variable declared
@@ -165,17 +165,6 @@ export class NiceIDBTransaction implements Transaction, Disposable {
      * ```
      */
     commit(): void;
-    /**
-     * Get an object store within the transaction's scope.
-     * @param {string} name
-     * @returns {NiceIDBStore} An object store instance.
-     */
-    store(name: string): NiceIDBStore;
-    /**
-     * @returns {Promise<void>} A Promise that resolves when the transaction's "complete" event fires.
-     */
-    promise(): Promise<void>;
-    done(): Promise<void>;
     [Symbol.dispose](): void;
     #private;
 }
