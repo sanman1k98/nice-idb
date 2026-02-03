@@ -1,68 +1,6 @@
 import { NiceIDBTransaction } from './tx';
 
 /**
- * @template {EventTarget} T
- * @template [M = Record<string, Event>]
- * @template {string} [E = keyof M extends string ? keyof M : never]
- */
-export class NiceIDBEventTarget {
-	/** @type {T} */ #target;
-
-	/**
-	 * @param {T} target
-	 */
-	constructor(target) {
-		if (target instanceof EventTarget)
-			this.#target = target;
-		else
-			throw new TypeError('Expected instance of EventTarget');
-	}
-
-	/**
-	 * @param {E} event
-	 * @param {(event: M[keyof M]) => void} handler
-	 * @param {AddEventListenerOptions | boolean} [opts]
-	 */
-	on(event, handler, opts) {
-		this.#target.addEventListener(event, /** @type {EventListener} */(handler), opts);
-		return this;
-	}
-
-	/**
-	 * @param {E} event
-	 * @param {(event: M[keyof M]) => void} handler
-	 * @param {AddEventListenerOptions | boolean} [opts]
-	 */
-	off(event, handler, opts) {
-		this.#target.removeEventListener(event, /** @type {EventListener} */(handler), opts);
-		return this;
-	}
-
-	/**
-	 * @param {E} event
-	 * @param {(event: M[keyof M]) => void} handler
-	 * @param {AddEventListenerOptions | boolean} [opts]
-	 */
-	once(event, handler, opts) {
-		if (typeof opts === 'boolean')
-			opts = { capture: opts };
-		this.#target.addEventListener(event, /** @type {EventListener} */(handler), { ...opts, once: true });
-		return this;
-	}
-
-	/**
-	 * @param {string | Event} event
-	 * @param {EventInit} [init]
-	 */
-	emit(event, init) {
-		if (event instanceof Event)
-			return this.#target.dispatchEvent(event);
-		const ev = new Event(event, init);
-		return this.#target.dispatchEvent(ev);
-	}
-}
-
-/**
  * A "thenable" wrapper for `IDBRequest` objects. Use await to get the
  * underlying request's `result` property.
  *
@@ -101,37 +39,15 @@ export class NiceIDBEventTarget {
  * @template [TResolved = R['result']]
  * @template [TRejected = never]
  * @implements {PromiseLike<TResolved | TRejected>}
- * @extends {NiceIDBEventTarget<R, R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap>}
  */
-export class NiceIDBRequest extends NiceIDBEventTarget {
+export class NiceIDBRequest {
 	/** @type {IDBRequest} */ #req;
 
 	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
 	/** @type {(value: R['result']) => TResolved | PromiseLike<TResolved>} */ #onfulfilled;
 	/** @type {(reason: any) => TRejected | PromiseLike<TRejected>} */ #onrejected;
 
-	/**
-	 * @param {R} request - the IDBRequest to wrap.
-	 * @param {(value: R['result']) => TResolved | PromiseLike<TResolved>} [onfulfilled] - Optionally transform the `result` that the request will resolve to.
-	 * @param {(reason: any) => TRejected | PromiseLike<TRejected>} [onrejected]
-	 */
-	constructor(request, onfulfilled, onrejected) {
-		super(request);
-		this.#req = request;
-		this.#onfulfilled = onfulfilled ?? Promise.resolve;
-		this.#onrejected = onrejected ?? Promise.reject;
-	}
-
 	get state() { return this.#req.readyState; }
-
-	get tx() {
-		const tx = this.#req.transaction;
-		if (!tx)
-			return null;
-		if (tx?.mode === 'versionchange')
-			return new NiceIDBTransaction.Upgrade(tx);
-		return new NiceIDBTransaction(tx);
-	}
 
 	/**
 	 * Will be `true` when the underlying request is "pending".
@@ -146,6 +62,26 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 	 * const alsoResult = await niceRequest.result;
 	 */
 	get result() { return this.then(); }
+
+	get tx() {
+		const tx = this.#req.transaction;
+		if (!tx)
+			return null;
+		if (tx?.mode === 'versionchange')
+			return new NiceIDBTransaction.Upgrade(tx);
+		return new NiceIDBTransaction(tx);
+	}
+
+	/**
+	 * @param {R} request - the IDBRequest to wrap.
+	 * @param {(value: R['result']) => TResolved | PromiseLike<TResolved>} [onfulfilled] - Optionally transform the `result` that the request will resolve to.
+	 * @param {(reason: any) => TRejected | PromiseLike<TRejected>} [onrejected]
+	 */
+	constructor(request, onfulfilled, onrejected) {
+		this.#req = request;
+		this.#onfulfilled = onfulfilled ?? Promise.resolve;
+		this.#onrejected = onrejected ?? Promise.reject;
+	}
 
 	/**
 	 * @template [TResult1 = TResolved | TRejected]
@@ -197,5 +133,52 @@ export class NiceIDBRequest extends NiceIDBEventTarget {
 			result => ({ result, error: null }),
 			error => ({ result: null, error }),
 		);
+	}
+
+	/**
+	 * @param {Parameters<R['addEventListener']>} args
+	 * @returns {this} Use to chain other listeners or methods.
+	 */
+	on(...args) {
+		const fn = EventTarget.prototype.addEventListener;
+		fn.apply(this.#req, args);
+		return this;
+	}
+
+	/**
+	 * @param {Parameters<R['removeEventListener']>} args
+	 * @returns {this} Use to chain other listeners or methods.
+	 */
+	off(...args) {
+		const fn = EventTarget.prototype.removeEventListener;
+		fn.apply(this.#req, args);
+		return this;
+	}
+
+	/**
+	 * @param {Parameters<R['addEventListener']>} args
+	 * @returns {this} Use to chain other listeners or methods.
+	 */
+	once(...args) {
+		const fn = EventTarget.prototype.addEventListener;
+		let opts = args[2];
+		if (typeof opts === 'boolean')
+			opts = { capture: opts, once: true };
+		else if (typeof opts === 'object')
+			Object.assign(opts, { once: true });
+		args[2] = opts;
+		fn.apply(this.#req, args);
+		return this;
+	}
+
+	/**
+	 * @param {Event | string} event
+	 * @param {EventInit} [init]
+	 */
+	emit(event, init) {
+		if (event instanceof Event)
+			return this.#req.dispatchEvent(event);
+		event = new Event(event, init);
+		return this.#req.dispatchEvent(event);
 	}
 }
