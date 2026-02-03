@@ -51,6 +51,27 @@ describe('defining upgrades', () => {
 		});
 	});
 
+	describe('upgrade proxies', () => {
+		let testDB: NiceIDB;
+
+		beforeEach(async () => deleteAllDatabases());
+		afterEach(() => testDB!.close());
+
+		it('will error when accessed outside of upgrade callbacks', async () => {
+			testDB = new NiceIDB('test-db').define((version, db, tx) => {
+				expect.soft(() => db.version).toThrow('Cannot access');
+				expect.soft(() => tx.mode).toThrow('Cannot access');
+				version(1, () => {
+					expect.soft(db.version).toBe(1);
+					expect.soft(tx.mode).toBe('versionchange');
+				});
+			});
+
+			expect.assertions(4);
+			await testDB.upgrade();
+		});
+	});
+
 	describe('upgrading existing databases', () => {
 		let testDB: NiceIDB;
 
