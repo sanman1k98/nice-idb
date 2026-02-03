@@ -41,18 +41,18 @@ import { NiceIDBTransaction } from './tx';
  * @implements {PromiseLike<TResolved | TRejected>}
  */
 export class NiceIDBRequest {
-	/** @type {IDBRequest} */ #req;
+	/** @type {IDBRequest} */ #target;
 
 	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
 	/** @type {(value: R['result']) => TResolved | PromiseLike<TResolved>} */ #onfulfilled;
 	/** @type {(reason: any) => TRejected | PromiseLike<TRejected>} */ #onrejected;
 
-	get state() { return this.#req.readyState; }
+	get state() { return this.#target.readyState; }
 
 	/**
 	 * Will be `true` when the underlying request is "pending".
 	 */
-	get pending() { return this.#req.readyState === 'pending'; }
+	get pending() { return this.#target.readyState === 'pending'; }
 
 	/**
 	 * Another way to resolve the `result` of the underlying request.
@@ -64,7 +64,7 @@ export class NiceIDBRequest {
 	get result() { return this.then(); }
 
 	get tx() {
-		const tx = this.#req.transaction;
+		const tx = this.#target.transaction;
 		if (!tx)
 			return null;
 		if (tx?.mode === 'versionchange')
@@ -78,7 +78,7 @@ export class NiceIDBRequest {
 	 * @param {(reason: any) => TRejected | PromiseLike<TRejected>} [onrejected]
 	 */
 	constructor(request, onfulfilled, onrejected) {
-		this.#req = request;
+		this.#target = request;
 		this.#onfulfilled = onfulfilled ?? Promise.resolve;
 		this.#onrejected = onrejected ?? Promise.reject;
 	}
@@ -95,25 +95,25 @@ export class NiceIDBRequest {
 				.then(onfulfilled, onrejected);
 		}
 
-		if (this.pending || this.#req instanceof IDBOpenDBRequest) {
+		if (this.pending || this.#target instanceof IDBOpenDBRequest) {
 			this.#result = new Promise((resolve) => {
 				/** @type {EventListener} */
 				const listener = (event) => {
-					this.#req.removeEventListener('success', listener);
-					this.#req.removeEventListener('error', listener);
-					const { result, error } = this.#req;
+					this.#target.removeEventListener('success', listener);
+					this.#target.removeEventListener('error', listener);
+					const { result, error } = this.#target;
 					if (event.type === 'success')
 						return resolve(this.#onfulfilled(result));
 					return resolve(this.#onrejected(error));
 				};
 				const opts = { once: true };
-				this.#req.addEventListener('success', listener, opts);
-				this.#req.addEventListener('error', listener, opts);
+				this.#target.addEventListener('success', listener, opts);
+				this.#target.addEventListener('error', listener, opts);
 			});
 		} else {
-			this.#result = this.#req.error
-				? this.#onrejected(this.#req.error)
-				: this.#onfulfilled(this.#req.result);
+			this.#result = this.#target.error
+				? this.#onrejected(this.#target.error)
+				: this.#onfulfilled(this.#target.result);
 		}
 
 		return Promise.resolve(this.#result)
@@ -140,8 +140,8 @@ export class NiceIDBRequest {
 	 * @returns {this} Use to chain other listeners or methods.
 	 */
 	on(...args) {
-		const fn = EventTarget.prototype.addEventListener;
-		fn.apply(this.#req, args);
+		// @ts-ignore
+		this.#target.addEventListener(...args);
 		return this;
 	}
 
@@ -150,8 +150,8 @@ export class NiceIDBRequest {
 	 * @returns {this} Use to chain other listeners or methods.
 	 */
 	off(...args) {
-		const fn = EventTarget.prototype.removeEventListener;
-		fn.apply(this.#req, args);
+		// @ts-ignore
+		this.#target.removeEventListener(...args);
 		return this;
 	}
 
@@ -160,14 +160,14 @@ export class NiceIDBRequest {
 	 * @returns {this} Use to chain other listeners or methods.
 	 */
 	once(...args) {
-		const fn = EventTarget.prototype.addEventListener;
 		let opts = args[2];
 		if (typeof opts === 'boolean')
 			opts = { capture: opts, once: true };
 		else if (typeof opts === 'object')
 			Object.assign(opts, { once: true });
 		args[2] = opts;
-		fn.apply(this.#req, args);
+		// @ts-ignore
+		this.#target.addEventListener(...args);
 		return this;
 	}
 
@@ -177,8 +177,7 @@ export class NiceIDBRequest {
 	 */
 	emit(event, init) {
 		if (event instanceof Event)
-			return this.#req.dispatchEvent(event);
-		event = new Event(event, init);
-		return this.#req.dispatchEvent(event);
+			return this.#target.dispatchEvent(event);
+		return this.#target.dispatchEvent(new Event(event, init));
 	}
 }
