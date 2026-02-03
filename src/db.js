@@ -165,7 +165,7 @@ export class NiceIDB {
 		/** @type {ProxyHandler<NiceIDBUpgradableDatabase>} */
 		const handler = {
 			get(target, k) {
-				if (!target.#upgrader)
+				if (!target.#upgrader || !target.#request)
 					throw new Error('Cannot access proxy outside of upgrade callback');
 				if (k === 'createStore')
 					return target.#createStore.bind(target);
