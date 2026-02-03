@@ -161,22 +161,28 @@ export class NiceIDB {
 		return this.#db.deleteObjectStore(name);
 	}
 
-	#createUpgradeableDatabaseProxy() {
-		/** @type {ProxyHandler<NiceIDBUpgradableDatabase>} */
-		const handler = {
-			get(target, k) {
-				if (!target.#upgrader || !target.#request)
-					throw new Error('Cannot access proxy outside of upgrade callback');
-				if (k === 'createStore')
-					return target.#createStore.bind(target);
-				else if (k === 'deleteStore')
-					return target.#deleteStore.bind(target);
-				const v = Reflect.get(target, k);
-				return typeof v === 'function' ? v.bind(target) : v;
-			},
-		};
+	/** @type {ProxyHandler<NiceIDBUpgradableDatabase>} */
+	static #proxyHandler = {
+		get(t, k, r) {
+			if (!t.#upgrader || !t.#request)
+				throw new Error('Cannot access proxy outside of upgrade callback');
+			let v;
+			if (k === 'createStore')
+				v = t.#createStore;
+			else if (k === 'deleteStore')
+				v = t.#deleteStore;
+			else
+				v = Reflect.get(t, k);
+			if (typeof v !== 'function')
+				return v;
+			return /** @this {any} */ function (/** @type {any[]} */ ...args) {
+				return v.apply(this === r ? t : this, args);
+			};
+		},
+	};
 
-		return Proxy.revocable(/** @type {any} */(this), handler);
+	#createUpgradeableDatabaseProxy() {
+		return Proxy.revocable(/** @type {any} */(this), NiceIDB.#proxyHandler);
 	}
 
 	#createUpgradeTransactionProxy() {
