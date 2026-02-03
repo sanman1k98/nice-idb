@@ -180,4 +180,27 @@ export class NiceIDBRequest {
 			return this.#target.dispatchEvent(event);
 		return this.#target.dispatchEvent(new Event(event, init));
 	}
+
+	/**
+	 * @param {Parameters<R['addEventListener']>} args
+	 */
+	addEventListener(...args) {
+		// @ts-ignore
+		return this.#target.addEventListener(...args);
+	}
+
+	/**
+	 * @param {Parameters<R['removeEventListener']>} args
+	 */
+	removeEventListener(...args) {
+		// @ts-ignore
+		return this.#target.removeEventListener(...args);
+	};
+
+	/**
+	 * @param {Event} event
+	 */
+	dispatchEvent(event) {
+		return this.#target.dispatchEvent(event);
+	}
 }
