@@ -180,19 +180,16 @@ export class NiceIDB {
 	}
 
 	#createUpgradeTransactionProxy() {
-		/** @type {IDBTransaction | undefined} */
-		let tx;
-		/** @type {NiceIDBUpgradeTransaction | undefined} */
-		let target;
+		/** @type {NiceIDBUpgradeTransaction} */ let target;
+		/** @type {IDBTransaction | undefined} */ let tx;
 
 		/** @type {ProxyHandler<NiceIDBUpgradeTransaction>} */
 		const handler = {
 			get: (_, k) => {
-				if (!this.#upgrader)
+				if (!this.#upgrader || !this.#request || !this.#request.transaction)
 					throw new Error('Cannot access proxy outside of upgrade callback');
-				const { transaction } = this.#upgrader;
-				if (!target || tx !== transaction) {
-					tx = /** @type {IDBTransaction} */(transaction);
+				if (tx !== this.#request.transaction) {
+					tx = this.#request.transaction;
 					target = new NiceIDB.UpgradeTransaction(tx);
 				}
 				const v = Reflect.get(target, k);
@@ -520,7 +517,6 @@ class NiceIDBUpgrader {
 
 	/** @type {(event: IDBVersionChangeEvent) => void | Promise<void>} */
 	#handleUpgrade() {
-		this.transaction = this.#request.transaction;
 		const promise = new Promise(resolve => resolve(this.#callback()));
 		this.#result.resolve(promise);
 	}
