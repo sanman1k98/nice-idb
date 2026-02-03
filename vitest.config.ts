@@ -8,7 +8,10 @@ export default defineConfig({
 			provider: webdriverio(),
 			// https://vitest.dev/config/browser/webdriverio
 			instances: [
-				{ browser: 'safari' },
+				{
+					browser: 'safari',
+					testTimeout: 2000,
+				},
 			],
 		},
 	},
