@@ -44,8 +44,8 @@ export class NiceIDBRequest {
 	/** @type {IDBRequest} */ #target;
 
 	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
-	/** @type {(value: R['result']) => TResolved | PromiseLike<TResolved>} */ #onfulfilled;
-	/** @type {(reason: any) => TRejected | PromiseLike<TRejected>} */ #onrejected;
+	/** @type {((value: R['result']) => TResolved | PromiseLike<TResolved>) | undefined | null} */ #onfulfilled;
+	/** @type {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} */ #onrejected;
 
 	get state() { return this.#target.readyState; }
 
@@ -74,13 +74,13 @@ export class NiceIDBRequest {
 
 	/**
 	 * @param {R} request - the IDBRequest to wrap.
-	 * @param {(value: R['result']) => TResolved | PromiseLike<TResolved>} [onfulfilled] - Optionally transform the `result` that the request will resolve to.
-	 * @param {(reason: any) => TRejected | PromiseLike<TRejected>} [onrejected]
+	 * @param {((value: R['result']) => TResolved | PromiseLike<TResolved>) | undefined | null} [onfulfilled] - Optionally transform the `result` that the request will resolve to.
+	 * @param {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} [onrejected]
 	 */
 	constructor(request, onfulfilled, onrejected) {
 		this.#target = request;
-		this.#onfulfilled = onfulfilled ?? Promise.resolve;
-		this.#onrejected = onrejected ?? Promise.reject;
+		this.#onfulfilled = onfulfilled;
+		this.#onrejected = onrejected;
 	}
 
 	/**
@@ -96,24 +96,27 @@ export class NiceIDBRequest {
 		}
 
 		if (this.pending || this.#target instanceof IDBOpenDBRequest) {
-			this.#result = new Promise((resolve) => {
+			this.#result = new Promise((resolve, reject) => {
 				/** @type {EventListener} */
 				const listener = (event) => {
 					this.#target.removeEventListener('success', listener);
 					this.#target.removeEventListener('error', listener);
 					const { result, error } = this.#target;
-					if (event.type === 'success')
-						return resolve(this.#onfulfilled(result));
-					return resolve(this.#onrejected(error));
+					// if (event.type === 'success')
+					// 	return resolve(this.#onfulfilled(result));
+					// return resolve(this.#onrejected(error));
+					return event.type === 'success' ? resolve(result) : reject(error);
 				};
 				const opts = { once: true };
 				this.#target.addEventListener('success', listener, opts);
 				this.#target.addEventListener('error', listener, opts);
-			});
+			}).then(this.#onfulfilled, this.#onrejected);
 		} else {
-			this.#result = this.#target.error
-				? this.#onrejected(this.#target.error)
-				: this.#onfulfilled(this.#target.result);
+			this.#result = new Promise((resolve, reject) =>
+				this.#target.error
+					? reject(this.#target.error)
+					: resolve(this.#target.result),
+			).then(this.#onfulfilled, this.#onrejected);
 		}
 
 		return Promise.resolve(this.#result)
