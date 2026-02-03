@@ -309,14 +309,21 @@ export class NiceIDB {
 			throw new Error('UndefinedVersions');
 
 		const versions = this.#versions;
-		const requested = version ?? versions.latest;
-		const existing = await indexedDB.databases().then(dbs =>
-			dbs.find(db => db.name === this.#name),
-		);
+		const { latest } = versions;
+		const requested = version ?? latest;
+		let current = await indexedDB.databases()
+			.then(dbs => dbs.find(db => db.name === this.#name))
+			.then(db => db?.version ?? 0);
 
-		let current = existing?.version ?? 0;
+		if (requested > latest)
+			throw new RangeError('VersionTooHigh', { cause: { requested, current } });
+		else if (requested < current)
+			throw new RangeError('VersionTooLow', { cause: { requested, current } });
 
 		while (current !== requested) {
+			if (this.#request?.result)
+				this.#request.result.close();
+
 			const upgrade = versions.callbacks.get(++current);
 			if (!upgrade)
 				throw new Error('MissingUpgrade');
@@ -328,14 +335,15 @@ export class NiceIDB {
 
 			try {
 				await this.#upgrader.finish;
-			} finally {
-				this.#request?.result.close();
+			} catch (error) {
+				this.#request.result?.close();
 				this.#request = undefined;
+				throw error;
 			}
 		}
 
-		versions.cleanup();
-		return await this.open();
+		this.#upgrader = undefined;
+		return this.open();
 	}
 
 	/**
@@ -356,9 +364,7 @@ export class NiceIDB {
 	 * @returns {NiceIDBRequest<IDBOpenDBRequest, this>} A wrapped open request that resolves to `this`.
 	 */
 	open(version) {
-		if (this.#request)
-			throw new Error('Database connection is already open');
-		this.#request = indexedDB.open(this.#name, version);
+		this.#request ??= indexedDB.open(this.#name, version);
 		return new NiceIDBRequest(this.#request, () => this);
 	}
 
