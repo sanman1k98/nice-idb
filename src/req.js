@@ -128,12 +128,28 @@ export class NiceIDBRequest {
 	}
 
 	/**
-	 * @param {Parameters<R['addEventListener']>} args
-	 * @returns {this} Use to chain other listeners or methods.
+	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {keyof M} K
+	 * @overload
+	 * @param {K} type
+	 * @param {M[K]} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
 	 */
-	on(...args) {
-		// @ts-ignore
-		this.#target.addEventListener(...args);
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 */
+	on(type, listener, options) {
+		this.#target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -148,18 +164,34 @@ export class NiceIDBRequest {
 	}
 
 	/**
-	 * @param {Parameters<R['addEventListener']>} args
-	 * @returns {this} Use to chain other listeners or methods.
+	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {keyof M} K
+	 * @overload
+	 * @param {K} type
+	 * @param {M[K]} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
 	 */
-	once(...args) {
-		let opts = args[2];
-		if (typeof opts === 'boolean')
-			opts = { capture: opts, once: true };
-		else if (typeof opts === 'object')
-			Object.assign(opts, { once: true });
-		args[2] = opts;
-		// @ts-ignore
-		this.#target.addEventListener(...args);
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 */
+	once(type, listener, options) {
+		if (typeof options === 'boolean')
+			options = { capture: true, once: true };
+		else if (typeof options === 'object')
+			Object.assign(options, { once: true });
+		else if ((options ?? null) === null)
+			options = { once: true };
+		this.#target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -174,19 +206,55 @@ export class NiceIDBRequest {
 	}
 
 	/**
-	 * @param {Parameters<R['addEventListener']>} args
+	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {keyof M} K
+	 * @overload
+	 * @param {K} type
+	 * @param {M[K]} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {void}
 	 */
-	addEventListener(...args) {
-		// @ts-ignore
-		return this.#target.addEventListener(...args);
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	addEventListener(type, listener, options) {
+		return this.#target.addEventListener(type, listener, options);
 	}
 
 	/**
-	 * @param {Parameters<R['removeEventListener']>} args
+	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {keyof M} K
+	 * @overload
+	 * @param {K} type
+	 * @param {M[K]} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {void}
 	 */
-	removeEventListener(...args) {
-		// @ts-ignore
-		return this.#target.removeEventListener(...args);
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	removeEventListener(type, listener, options) {
+		return this.#target.removeEventListener(type, listener, options);
 	};
 
 	/**
