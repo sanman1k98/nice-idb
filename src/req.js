@@ -1,5 +1,3 @@
-import { NiceIDBTransaction } from './tx';
-
 /**
  * A "thenable" wrapper for `IDBRequest` objects. Use await to get the
  * underlying request's `result` property.
@@ -62,15 +60,6 @@ export class NiceIDBRequest {
 	 * const alsoResult = await niceRequest.result;
 	 */
 	get result() { return this.then(); }
-
-	get tx() {
-		const tx = this.#target.transaction;
-		if (!tx)
-			return null;
-		if (tx?.mode === 'versionchange')
-			return new NiceIDBTransaction.Upgrade(tx);
-		return new NiceIDBTransaction(tx);
-	}
 
 	/**
 	 * @param {R} request - the IDBRequest to wrap.

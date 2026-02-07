@@ -135,6 +135,14 @@ export class NiceIDBTransaction {
 		this.#tx.commit();
 	}
 
+	/**
+	 * @param {IDBTransaction} tx
+	 * @returns {NiceIDBTransaction} - A wrapped transaction.
+	 */
+	static wrap(tx) {
+		return new this(tx);
+	}
+
 	static Upgrade = class NiceIDBUpgradeTransaction extends NiceIDBTransaction {
 		/**
 		 * @param {IDBTransaction} tx
@@ -143,15 +151,6 @@ export class NiceIDBTransaction {
 			if (!(tx instanceof IDBTransaction) || tx.mode !== 'versionchange')
 				throw new TypeError('Expected an upgrade transaction');
 			super(tx);
-		}
-
-		/**
-		 * @param {string} name
-		 * @override
-		 */
-		store(name) {
-			const store = this.#tx.objectStore(name);
-			return new NiceIDBStore.Upgradable(store, this.#tx);
 		}
 	};
 }
