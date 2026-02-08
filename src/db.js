@@ -453,35 +453,6 @@ export class NiceIDB {
 		const req = indexedDB.deleteDatabase(this.#name);
 		return new NiceIDBRequest(req);
 	}
-
-	/**
-	 * Compare two keys.
-	 * @param {IDBValidKey} a
-	 * @param {IDBValidKey} b
-	 * @returns {-1 | 0 | 1} Comparison result.
-	 * @see {@link window.indexedDB.cmp}
-	 */
-	static cmp(a, b) {
-		return /** @type {-1 | 0 | 1} */(window.indexedDB.cmp(a, b));
-	}
-
-	/**
-	 * Get the names and versions of all available databases.
-	 * @returns {Promise<IDBDatabaseInfo[]>} A promise that resolves to the list of databases.
-	 * @see {@link window.indexedDB.databases}
-	 */
-	static async databases() {
-		return window.indexedDB.databases();
-	}
-
-	/**
-	 * Delete a database.
-	 * @param {string} name
-	 */
-	static delete(name) {
-		const req = indexedDB.deleteDatabase(name);
-		return new NiceIDBRequest(req);
-	}
 }
 
 class NiceIDBUpgrader {
