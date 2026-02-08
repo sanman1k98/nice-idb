@@ -390,21 +390,116 @@ export class Database {
 	}
 
 	/**
-	 * @param {keyof IDBDatabaseEventMap} type
-	 * @param {(this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any} listener
+	 * @template {keyof IDBDatabaseEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
 	 * @param {boolean | AddEventListenerOptions} options
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {(this: IDBDatabase, ev: Event) => any} listener
+	 * @param {boolean | AddEventListenerOptions} options
+	 */
+	on(type, listener, options) {
+		this.#db.addEventListener(type, listener, options);
+		return this;
+	}
+
+	/**
+	 * @template {keyof IDBDatabaseEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
+	 * @param {boolean | AddEventListenerOptions} options
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {(this: IDBDatabase, ev: Event) => any} listener
+	 * @param {boolean | AddEventListenerOptions} options
+	 */
+	once(type, listener, options) {
+		if (typeof options === 'boolean')
+			options = { capture: true, once: true };
+		else if (options && typeof options === 'object')
+			Object.assign(options, { once: true });
+		else if ((options ?? null) === null)
+			options = { once: true };
+		this.#db.addEventListener(type, listener, options);
+		return this;
+	}
+
+	/**
+	 * @template {keyof IDBDatabaseEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
+	 * @param {boolean | EventListenerOptions} options
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {(this: IDBDatabase, ev: Event) => any} listener
+	 * @param {boolean | EventListenerOptions} options
+	 */
+	off(type, listener, options) {
+		this.#db.removeEventListener(type, listener, options);
+		return this;
+	}
+
+	/**
+	 * @param {Event | string} event
+	 * @param {EventInit} [init]
+	 */
+	emit(event, init) {
+		if (event instanceof Event)
+			return this.#db.dispatchEvent(event);
+		return this.#db.dispatchEvent(new Event(event, init));
+	}
+
+	/**
+	 * @template {keyof IDBDatabaseEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
+	 * @param {boolean | AddEventListenerOptions} options
+	 * @returns {void}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {(this: IDBDatabase, ev: Event) => any} listener
+	 * @param {boolean | AddEventListenerOptions} options
+	 * @returns {void}
 	 */
 	addEventListener(type, listener, options) {
 		return this.#db.addEventListener(type, listener, options);
 	}
 
 	/**
-	 * @param {keyof IDBDatabaseEventMap} type
-	 * @param {(this: IDBDatabase, ev: Event | IDBVersionChangeEvent) => any} listener
+	 * @template {keyof IDBDatabaseEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
 	 * @param {boolean | EventListenerOptions} options
+	 * @returns {void}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {(this: IDBDatabase, ev: Event) => any} listener
+	 * @param {boolean | EventListenerOptions} options
+	 * @returns {void}
 	 */
 	removeEventListener(type, listener, options) {
 		return this.#db.removeEventListener(type, listener, options);
+	}
+
+	/**
+	 * @param {Event} event
+	 */
+	dispatchEvent(event) {
+		return this.#db.dispatchEvent(event);
 	}
 
 	/**
