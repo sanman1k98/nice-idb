@@ -122,6 +122,12 @@ export class Database {
 	}
 
 	/**
+	 * List of object stores in the database.
+	 * @see {@link IDBDatabase.prototype.objectStoreNames}
+	 */
+	get storeNames() { return toStrings(this.#db.objectStoreNames); }
+
+	/**
 	 * @overload
 	 * @param {string} name - A database name.
 	 */
@@ -381,13 +387,84 @@ export class Database {
 		return new DBRequest(this.#request, () => this);
 	}
 
-	/**
-	 * List of object stores in the database.
-	 * @see {@link IDBDatabase.prototype.objectStoreNames}
-	 */
-	get storeNames() {
-		return toStrings(this.#db.objectStoreNames);
+	destroy() {
+		if (this.#request?.result)
+			this.#request.result.close();
+		this.#request = undefined;
+		const req = indexedDB.deleteDatabase(this.#name);
+		return new DBRequest(req);
 	}
+
+	/**
+	 * Create a transaction instance.
+	 *
+	 * @example
+	 * using tx = db.transaction('items');
+	 * const items = tx.store('items');
+	 * const count = await items.count();
+	 *
+	 * @overload
+	 * @param {string | string[]} stores
+	 * @param {'readonly'} [mode]
+	 * @param {IDBTransactionOptions} [opts]
+	 * @returns {ReadOnlyTransaction}
+	 */
+	/**
+	 * @overload
+	 * @param {string | string[]} stores
+	 * @param {'readwrite'} mode
+	 * @param {IDBTransactionOptions} [opts]
+	 * @returns {ReadWriteTransaction}
+	 */
+	/**
+	 * @param {string | string[]} stores - Name of stores include in the scope of the transaction.
+	 * @param {'readonly' | 'readwrite'} [mode] - Defaults to "readonly"
+	 * @param {IDBTransactionOptions} [options] - Defaults to `{ durability: "default" }`
+	 * @returns {ReadOnlyTransaction} A transaction instance.
+	 */
+	transaction(stores, mode, options) {
+		const tx = this.#db.transaction(stores, mode, options);
+		if (mode === 'readwrite')
+			return new ReadWriteTransaction(tx);
+		return new ReadOnlyTransaction(tx);
+	}
+
+	/**
+	 * Convenience method to access a single object store.
+	 *
+	 * @overload
+	 * @param {string} name
+	 * @param {'readonly'} [mode]
+	 * @param {IDBTransactionOptions} [opts]
+	 * @returns {ReadOnlyStore}
+	 */
+	/**
+	 * @overload
+	 * @param {string} name
+	 * @param {'readwrite'} mode
+	 * @param {IDBTransactionOptions} [opts]
+	 * @returns {ReadWriteStore}
+	 */
+	/**
+	 * @param {string} name - Name of the object store.
+	 * @param {'readonly' | 'readwrite'} [mode] - The transaction mode to access the object store; defaults to "readonly".
+	 * @param {IDBTransactionOptions} [opts] - Defaults to `{ durability: "default" }`
+	 * @returns {ReadOnlyStore} The object store instance.
+	 */
+	store(name, mode, opts) {
+		const tx = this.#db.transaction(name, mode, opts);
+		const store = tx.objectStore(name);
+		if (mode === 'readwrite')
+			return new ReadWriteStore(store);
+		return new ReadOnlyStore(store);
+	}
+
+	close() {
+		this.#closed = true;
+		this.#db.close();
+	}
+
+	[Symbol.dispose]() { this.close(); }
 
 	/**
 	 * @template {keyof IDBDatabaseEventMap} K
@@ -500,87 +577,6 @@ export class Database {
 	 */
 	dispatchEvent(event) {
 		return this.#db.dispatchEvent(event);
-	}
-
-	/**
-	 * Create a transaction instance.
-	 *
-	 * @example
-	 * using tx = db.transaction('items');
-	 * const items = tx.store('items');
-	 * const count = await items.count();
-	 *
-	 * @overload
-	 * @param {string | string[]} stores
-	 * @param {'readonly'} [mode]
-	 * @param {IDBTransactionOptions} [opts]
-	 * @returns {ReadOnlyTransaction}
-	 */
-	/**
-	 * @overload
-	 * @param {string | string[]} stores
-	 * @param {'readwrite'} mode
-	 * @param {IDBTransactionOptions} [opts]
-	 * @returns {ReadWriteTransaction}
-	 */
-	/**
-	 * @param {string | string[]} stores - Name of stores include in the scope of the transaction.
-	 * @param {'readonly' | 'readwrite'} [mode] - Defaults to "readonly"
-	 * @param {IDBTransactionOptions} [options] - Defaults to `{ durability: "default" }`
-	 * @returns {ReadOnlyTransaction} A transaction instance.
-	 */
-	transaction(stores, mode, options) {
-		const tx = this.#db.transaction(stores, mode, options);
-		if (mode === 'readwrite')
-			return new ReadWriteTransaction(tx);
-		return new ReadOnlyTransaction(tx);
-	}
-
-	/**
-	 * Convenience method to access a single object store.
-	 *
-	 * @overload
-	 * @param {string} name
-	 * @param {'readonly'} [mode]
-	 * @param {IDBTransactionOptions} [opts]
-	 * @returns {ReadOnlyStore}
-	 */
-	/**
-	 * @overload
-	 * @param {string} name
-	 * @param {'readwrite'} mode
-	 * @param {IDBTransactionOptions} [opts]
-	 * @returns {ReadWriteStore}
-	 */
-	/**
-	 * @param {string} name - Name of the object store.
-	 * @param {'readonly' | 'readwrite'} [mode] - The transaction mode to access the object store; defaults to "readonly".
-	 * @param {IDBTransactionOptions} [opts] - Defaults to `{ durability: "default" }`
-	 * @returns {ReadOnlyStore} The object store instance.
-	 */
-	store(name, mode, opts) {
-		const tx = this.#db.transaction(name, mode, opts);
-		const store = tx.objectStore(name);
-		if (mode === 'readwrite')
-			return new ReadWriteStore(store);
-		return new ReadOnlyStore(store);
-	}
-
-	close() {
-		this.#closed = true;
-		this.#db.close();
-	}
-
-	[Symbol.dispose]() {
-		this.close();
-	}
-
-	destroy() {
-		if (this.#request?.result)
-			this.#request.result.close();
-		this.#request = undefined;
-		const req = indexedDB.deleteDatabase(this.#name);
-		return new DBRequest(req);
 	}
 }
 
