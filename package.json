@@ -3,7 +3,7 @@
 	"type": "module",
 	"packageManager": "pnpm@10.16.1",
 	"imports": {
-		"#nice-idb/*": "./src/*",
+		"#nice-idb/*": "./src/*.js",
 		"#types": {
 			"types": "./src/types.d.ts"
 		}

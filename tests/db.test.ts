@@ -1,14 +1,14 @@
 import type { Mock } from 'vitest';
-import { NiceIDB } from '#nice-idb/db.js';
+import { Database } from '#nice-idb/db';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { databaseExists, delay, deleteAllDatabases } from './utils';
 
 describe('basic usage', () => {
 	it('can open and close a connection', async () => {
-		const db = new NiceIDB('test-db');
+		const db = new Database('test-db');
 		const close = vi.fn(() => db.close());
 
-		await expect(db.open()).resolves.toBeInstanceOf(NiceIDB);
+		await expect(db.open()).resolves.toBeInstanceOf(Database);
 
 		expect(db.opened).toBe(true);
 		expect(db.version).toBeGreaterThanOrEqual(1);
@@ -18,7 +18,7 @@ describe('basic usage', () => {
 	});
 
 	it('has similar properties to an IDBDatabase', async () => {
-		const db = await new NiceIDB('test-db').open();
+		const db = await new Database('test-db').open();
 
 		expect(db.name).toBeTypeOf('string');
 		expect(db.version).toBeTypeOf('number');
@@ -33,7 +33,7 @@ describe('defining upgrades', () => {
 
 	describe('basic usage', () => {
 		it('can define the structure of a new database', async () => {
-			const db = new NiceIDB('test-db').define((version, db) => {
+			const db = new Database('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
@@ -41,7 +41,7 @@ describe('defining upgrades', () => {
 				});
 			});
 
-			await expect(db.upgrade()).resolves.toBeInstanceOf(NiceIDB);
+			await expect(db.upgrade()).resolves.toBeInstanceOf(Database);
 
 			expect(db.version).toBe(1);
 			expect(db.storeNames).toContain('logs');
@@ -52,13 +52,13 @@ describe('defining upgrades', () => {
 	});
 
 	describe('upgrade proxies', () => {
-		let testDB: NiceIDB;
+		let testDB: Database;
 
 		beforeEach(async () => deleteAllDatabases());
 		afterEach(() => testDB!.close());
 
 		it('will error when accessed outside of upgrade callbacks', async () => {
-			testDB = new NiceIDB('test-db').define((version, db, tx) => {
+			testDB = new Database('test-db').define((version, db, tx) => {
 				expect.soft(() => db.version).toThrow('Cannot access');
 				expect.soft(() => tx.mode).toThrow('Cannot access');
 				version(1, () => {
@@ -73,10 +73,10 @@ describe('defining upgrades', () => {
 	});
 
 	describe('upgrading existing databases', () => {
-		let testDB: NiceIDB;
+		let testDB: Database;
 
 		beforeEach(async () => {
-			const existingDB = new NiceIDB('test-db')
+			const existingDB = new Database('test-db')
 				.define((version, db) => {
 					version(1, async () => {
 						const logs = db.createStore('logs', { autoIncrement: true });
@@ -87,7 +87,7 @@ describe('defining upgrades', () => {
 			await existingDB.upgrade();
 			existingDB.close();
 
-			testDB = new NiceIDB('test-db');
+			testDB = new Database('test-db');
 		});
 
 		afterEach(async () => {
@@ -106,7 +106,7 @@ describe('defining upgrades', () => {
 			});
 
 			const spy = vi.spyOn(indexedDB, 'open');
-			await expect(testDB.upgrade()).resolves.toBeInstanceOf(NiceIDB);
+			await expect(testDB.upgrade()).resolves.toBeInstanceOf(Database);
 			expect(testDB.version).toBe(1);
 			expect(spy).toBeCalledTimes(1);
 			expect(callback!).not.toBeCalled();
@@ -117,7 +117,7 @@ describe('defining upgrades', () => {
 		beforeEach(async () => deleteAllDatabases());
 
 		it('will create an upgrade tranaction for each upgrade', async () => {
-			const db = new NiceIDB('test-db').define((version, db, tx) => {
+			const db = new Database('test-db').define((version, db, tx) => {
 				version(1, async () => {
 					expect(db.version).toBe(1);
 					tx.commit();
@@ -132,14 +132,14 @@ describe('defining upgrades', () => {
 				});
 			});
 
-			await expect(db.upgrade()).resolves.toBeInstanceOf(NiceIDB);
+			await expect(db.upgrade()).resolves.toBeInstanceOf(Database);
 			expect(db.version).toBe(3);
 
 			db.close();
 		});
 
 		it('will abort an upgrade if an error is thrown', async () => {
-			const db = new NiceIDB('test-db').define((version, db) => {
+			const db = new Database('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
@@ -153,7 +153,7 @@ describe('defining upgrades', () => {
 		});
 
 		it('supports manually committing at the end of an upgrade', async () => {
-			const db = new NiceIDB('test-db').define((version, db, tx) => {
+			const db = new Database('test-db').define((version, db, tx) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
@@ -167,7 +167,7 @@ describe('defining upgrades', () => {
 				});
 			});
 
-			await expect(db.upgrade()).resolves.toBeInstanceOf(NiceIDB);
+			await expect(db.upgrade()).resolves.toBeInstanceOf(Database);
 			expect(db.version).toBe(2);
 			expect(db.store('logs').indexNames).toHaveLength(2);
 
@@ -179,7 +179,7 @@ describe('defining upgrades', () => {
 		beforeEach(async () => deleteAllDatabases());
 
 		it('can unexpectedly yield control when awaiting', async () => {
-			const db = new NiceIDB('test-db').define((version, db) => {
+			const db = new Database('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
@@ -198,7 +198,7 @@ describe('defining upgrades', () => {
 			// But the upgrade won't have been aborted.
 			await expect(databaseExists('test-db')).resolves.toBe(true);
 
-			await expect(db.open()).resolves.toBeInstanceOf(NiceIDB);
+			await expect(db.open()).resolves.toBeInstanceOf(Database);
 			expect(db.version).toBe(1);
 			// Creates store and index as part of the upgrade.
 			expect(db.storeNames).includes('logs');

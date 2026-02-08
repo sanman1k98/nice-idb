@@ -1,20 +1,19 @@
-import { NiceIDBStore } from './store.js';
-import { getStrings } from './util.js';
-
-/** @typedef {import('#types').Transaction} Transaction */
+import { ReadOnlyStore, ReadWriteStore, UpgradableStore } from './store.js';
+import { toStrings } from './util.js';
 
 /**
- * @implements {Transaction}
  * @implements {Disposable}
  */
-export class NiceIDBTransaction {
-	/** @type {IDBTransaction} */ #tx;
+export class ReadOnlyTransaction {
+	/** @type {IDBTransaction} */ #target;
 	/** @type {Promise<Event>} */ #finish;
 	/** @type {Event | undefined} */ #event;
 
-	get error() { return this.#tx.error; }
-	get durability() { return this.#tx.durability; }
-	get mode() { return this.#tx.mode; }
+	get target() { return this.#target; }
+
+	get error() { return this.#target.error; }
+	get durability() { return this.#target.durability; }
+	get mode() { return this.#target.mode; }
 
 	/**
 	 * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
@@ -32,13 +31,13 @@ export class NiceIDBTransaction {
 	 * List of stores in the scope of this transaction.
 	 * @see {@link IDBTransaction.prototype.objectStoreNames}
 	 */
-	get storeNames() { return getStrings(this.#tx.objectStoreNames); }
+	get storeNames() { return toStrings(this.#target.objectStoreNames); }
 
 	/**
 	 * @param {IDBTransaction} tx - The transaction instance to wrap.
 	 */
 	constructor(tx) {
-		this.#tx = tx;
+		this.#target = tx;
 
 		this.#finish = new Promise((resolve) => {
 			/** @satisfies {EventListener} */
@@ -56,59 +55,161 @@ export class NiceIDBTransaction {
 	/**
 	 * Get an object store within the transaction's scope.
 	 * @param {string} name
-	 * @returns {NiceIDBStore} An object store instance.
 	 */
 	store(name) {
-		const store = this.#tx.objectStore(name);
-		return this.#tx.mode === 'versionchange'
-			? new NiceIDBStore.Upgradable(store, this.#tx)
-			: new NiceIDBStore(store);
-	}
-
-	/** @type {Record<string, NiceIDBStore> | undefined} */
-	#storesProxy;
-
-	/**
-	 * @see {@link IDBTransaction.prototype.objectStoreNames}
-	 * Access stores in the scope of this transaction.
-	 * @returns {{ [name: string]: NiceIDBStore }} Can be indexed by store names.
-	 */
-	get stores() {
-		return this.#storesProxy ??= new Proxy(Object.create(null), {
-			get: (_, k) => {
-				if (typeof k === 'string' && this.storeNames.includes(k)) {
-					const store = this.#tx.objectStore(k);
-					return this.#tx.mode === 'versionchange'
-						? new NiceIDBStore.Upgradable(store, this.#tx)
-						: new NiceIDBStore(store);
-				}
-				throw new Error('Invalid store name', {
-					cause: { name: k },
-				});
-			},
-		});
+		const store = this.#target.objectStore(name);
+		return new ReadOnlyStore(store);
 	}
 
 	/**
-	 * @param {keyof IDBTransactionEventMap} type
-	 * @param {(this: IDBTransaction, ev: Event) => any} listener
+	 * @template {keyof IDBTransactionEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
 	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {void}
 	 */
 	addEventListener(type, listener, options) {
-		return this.#tx.addEventListener(type, listener, options);
+		return this.#target.addEventListener(type, listener, options);
 	}
 
 	/**
-	 * @param {keyof IDBTransactionEventMap} type
-	 * @param {(this: IDBTransaction, ev: Event) => any} listener
+	 * @template {keyof IDBTransactionEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
 	 * @param {boolean | EventListenerOptions} [options]
 	 */
 	removeEventListener(type, listener, options) {
-		return this.#tx.removeEventListener(type, listener, options);
+		return this.#target.removeEventListener(type, listener, options);
+	}
+
+	/**
+	 * @param {Event} event
+	 */
+	dispatchEvent(event) {
+		return this.#target.dispatchEvent(event);
+	}
+
+	/**
+	 * @template {keyof IDBTransactionEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 */
+	on(type, listener, options) {
+		this.#target.addEventListener(type, listener, options);
+		return this;
+	}
+
+	/**
+	 * @template {keyof IDBTransactionEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 */
+	off(type, listener, options) {
+		this.#target.removeEventListener(type, listener, options);
+		return this;
+	}
+
+	/**
+	 * @template {keyof IDBTransactionEventMap} K
+	 * @overload
+	 * @param {K} type
+	 * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 */
+	once(type, listener, options) {
+		if (typeof options === 'boolean')
+			options = { capture: true, once: true };
+		else if (typeof options === 'object')
+			Object.assign(options, { once: true });
+		else if ((options ?? null) === null)
+			options = { once: true };
+		this.#target.addEventListener(type, listener, options);
+		return this;
+	}
+
+	/**
+	 * @param {string | Event} event
+	 * @param {EventInit} [init]
+	 */
+	emit(event, init) {
+		if (typeof event === 'string')
+			return this.#target.dispatchEvent(new Event(event, init));
+		return this.#target.dispatchEvent(event);
 	}
 
 	abort() {
-		this.#tx.abort();
+		this.#target.abort();
 	}
 
 	/**
@@ -128,29 +229,55 @@ export class NiceIDBTransaction {
 	 * ```
 	 */
 	commit() {
-		this.#tx.commit();
+		this.#target.commit();
 	}
 
 	[Symbol.dispose]() {
-		this.#tx.commit();
+		this.#target.commit();
 	}
 
 	/**
 	 * @param {IDBTransaction} tx
-	 * @returns {NiceIDBTransaction} - A wrapped transaction.
+	 * @returns {ReadOnlyTransaction} - A wrapped transaction.
 	 */
 	static wrap(tx) {
 		return new this(tx);
 	}
+}
 
-	static Upgrade = class NiceIDBUpgradeTransaction extends NiceIDBTransaction {
-		/**
-		 * @param {IDBTransaction} tx
-		 */
-		constructor(tx) {
-			if (!(tx instanceof IDBTransaction) || tx.mode !== 'versionchange')
-				throw new TypeError('Expected an upgrade transaction');
-			super(tx);
-		}
-	};
+export class ReadWriteTransaction extends ReadOnlyTransaction {
+	/**
+	 * @override
+	 * @param {string} name
+	 */
+	store(name) {
+		const store = super.target.objectStore(name);
+		return new ReadWriteStore(store);
+	}
+}
+
+export class UpgradeTransaction extends ReadWriteTransaction {
+	/**
+	 * @override
+	 * @param {string} name
+	 */
+	store(name) {
+		const store = super.target.objectStore(name);
+		return new UpgradableStore(store);
+	}
+}
+
+export class Transaction {
+	static ReadOnly = ReadOnlyTransaction;
+	static ReadWrite = ReadWriteTransaction;
+	static Upgrade = UpgradeTransaction;
+
+	/** @param {IDBTransaction} tx */
+	static readonly(tx) { return new this.ReadOnly(tx); }
+
+	/** @param {IDBTransaction} tx */
+	static readwrite(tx) { return new this.ReadWrite(tx); }
+
+	/** @param {IDBTransaction} tx */
+	static versionchange(tx) { return new this.Upgrade(tx); }
 }

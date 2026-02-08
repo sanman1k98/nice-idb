@@ -1,102 +1,65 @@
-import { getAsyncIterableRecords, promisify } from './util.js';
-
-/** @typedef {import('#types').Index} Index */
+/** @import { OpenCursorOptions } from './util.js' */
+import { IndexCursor } from './cursor.js';
+import { ReadOnlySource } from './source.js';
+import { cursorArgs } from './util.js';
 
 /**
- * @implements {Index}
- * @implements {AsyncIterable<IDBCursorWithValue>}
+ * @extends {ReadOnlySource<IDBIndex>}
  */
-export class NiceIDBIndex {
-	/** @type {IDBIndex} */
-	#idx;
+export class ReadOnlyIndex extends ReadOnlySource {
+	get multiEntry() { return super.target.multiEntry; }
 
-	/** @param {IDBIndex} idx */
-	constructor(idx) {
-		this.#idx = idx;
-	}
+	get unique() { return super.target.unique; }
 
-	get keyPath() {
-		return this.#idx.keyPath;
-	}
-
-	get multiEntry() {
-		return this.#idx.multiEntry;
-	}
-
-	get name() {
-		return this.#idx.name;
-	}
-
-	get unique() {
-		return this.#idx.unique;
-	}
-
-	/** @param {IDBValidKey | IDBKeyRange} [query] */
-	async count(query) {
-		return promisify(this.#idx.count(query));
-	}
-
-	/** @param {IDBValidKey | IDBKeyRange} query */
-	async get(query) {
-		return promisify(this.#idx.get(query));
+	/**
+	 * @override
+	 * @param {OpenCursorOptions} [opts]
+	 */
+	cursor(opts) {
+		const args = cursorArgs(opts);
+		const req = super.target.openCursor(...args);
+		return IndexCursor.readonly(req);
 	}
 
 	/**
-	 * @param {IDBValidKey | IDBKeyRange | null} [query]
-	 * @param {number} [count]
+	 * @override
+	 * @param {OpenCursorOptions} [opts]
 	 */
-	async getAll(query, count) {
-		return promisify(this.#idx.getAll(query, count));
+	keyCursor(opts) {
+		const args = cursorArgs(opts);
+		const req = super.target.openKeyCursor(...args);
+		return IndexCursor.readonlyKey(req);
 	}
 
 	/**
-	 * @param {IDBValidKey | IDBKeyRange | null} [query]
-	 * @param {number} [count]
+	 * @param {IDBIndex} index
 	 */
-	async getAllKeys(query, count) {
-		return promisify(this.#idx.getAllKeys(query, count));
+	static wrap(index) {
+		return new this(index);
 	}
+}
 
-	/** @param {IDBValidKey | IDBKeyRange} query */
-	async getKey(query) {
-		return promisify(this.#idx.getKey(query));
-	}
-
+export class ReadWriteIndex extends ReadOnlyIndex {
 	/**
-	 * Traverse the index with an {@link IDBCursorWithValue} in a `for await ... of` loop.
-	 *
-	 * @example
-	 *
-	 * ```ts
-	 * const store = db.tx('store-name', 'readonly').store('store-name');
-	 * const index = store.index('index-name');
-	 * for await (const cursor of index.iter({ dir: 'prev' })) {
-	 *   const { key, value } = cursor;
-	 *   console.log(key, value);
-	 *   // `cursor.continue()` is automatically called.
-	 * }
-	 * ```
-	 *
-	 * @param {import('./util').CursorOptions} opts
-	 * @returns {AsyncIterable<IDBCursorWithValue>} The cursor instance.
+	 * @override
+	 * @param {OpenCursorOptions} [opts]
 	 */
-	async* iter(opts) {
-		yield* getAsyncIterableRecords(this.#idx, opts, true);
+	cursor(opts) {
+		const args = cursorArgs(opts);
+		const req = super.target.openCursor(...args);
+		return IndexCursor.readwrite(req);
 	}
+}
 
-	/**
-	 * Traverse the index's keys with an {@link IDBCursor} in a `for await ... of` loop.
-	 *
-	 * @see {@link NiceIDBIndex#iter}
-	 *
-	 * @param {import('./util').CursorOptions} opts
-	 * @returns {AsyncIterable<IDBCursor>} The cursor instance.
-	 */
-	async* iterKeys(opts) {
-		yield* getAsyncIterableRecords(this.#idx, opts, false);
-	}
+export class Index {
+	static ReadOnly = ReadOnlyIndex;
+	static ReadWrite = ReadWriteIndex;
 
-	async* [Symbol.asyncIterator]() {
-		yield* getAsyncIterableRecords(this.#idx);
-	}
+	/** @param {IDBIndex} index */
+	static readonly(index) { return new this.ReadOnly(index); }
+
+	/** @param {IDBIndex} index */
+	static readwrite(index) { return new this.ReadWrite(index); }
+
+	static versionchange = this.readwrite;
 }

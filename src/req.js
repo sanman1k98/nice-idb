@@ -3,17 +3,17 @@
  * underlying request's `result` property.
  *
  * @example
- * const req = new NiceIDBRequest(someIDBRequest);
+ * const req = new DBRequest(someIDBRequest);
  * const result = await req;
  * console.assert(result === someIDBRequest.result);
  *
  * @example
  * // Transform the fulfillment value with a callback as a second constructor argument.
- * const req = new NiceIDBRequest(indexedDB.open('my-db'), (result) => {
+ * const req = new DBRequest(indexedDB.open('my-db'), (result) => {
  *   console.assert(result instanceof IDBDatabase);
  *   console.info(`Sucessfully opened database ${result.name}`);
- *   // Return a NiceIDB instance as the fulfillment value.
- *   return new NiceIDB(result);
+ *   // Return a NiceIDBDatabase instance as the fulfillment value.
+ *   return new NiceIDBDatabase(result);
  * });
  *
  * // Register some event listeners...
@@ -28,7 +28,7 @@
  *
  * @example
  * // Attach some event listeners.
- * const req = new NiceIDBRequest(someIDBRequest).once('error', (event) => {
+ * const req = new DBRequest(someIDBRequest).once('error', (event) => {
  *   event.preventDefault()
  * });
  * const result = await req;
@@ -38,7 +38,7 @@
  * @template [TRejected = never]
  * @implements {PromiseLike<TResolved | TRejected>}
  */
-export class NiceIDBRequest {
+export class DBRequest {
 	/** @type {IDBRequest} */ #target;
 
 	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
@@ -91,9 +91,6 @@ export class NiceIDBRequest {
 					this.#target.removeEventListener('success', listener);
 					this.#target.removeEventListener('error', listener);
 					const { result, error } = this.#target;
-					// if (event.type === 'success')
-					// 	return resolve(this.#onfulfilled(result));
-					// return resolve(this.#onrejected(error));
 					return event.type === 'success' ? resolve(result) : reject(error);
 				};
 				const opts = { once: true };
@@ -187,7 +184,7 @@ export class NiceIDBRequest {
 	once(type, listener, options) {
 		if (typeof options === 'boolean')
 			options = { capture: true, once: true };
-		else if (typeof options === 'object')
+		else if (options && typeof options === 'object')
 			Object.assign(options, { once: true });
 		else if ((options ?? null) === null)
 			options = { once: true };
@@ -262,5 +259,18 @@ export class NiceIDBRequest {
 	 */
 	dispatchEvent(event) {
 		return this.#target.dispatchEvent(event);
+	}
+
+	/**
+	 * @template {IDBRequest} R
+	 * @template [TResolved = R['result']]
+	 * @template [TRejected = never]
+	 * @param {R} request
+	 * @param {((value: R['result']) => TResolved | PromiseLike<TResolved>) | null | undefined} [onfulfilled]
+	 * @param {((reason: any) => TRejected | PromiseLike<TRejected>) | null | undefined} [onrejected]
+	 * @returns {DBRequest<R, TResolved, TRejected>} Wrapped request.
+	 */
+	static wrap(request, onfulfilled, onrejected) {
+		return new this(request, onfulfilled, onrejected);
 	}
 }
