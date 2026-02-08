@@ -151,12 +151,28 @@ export class DBRequest {
 	}
 
 	/**
-	 * @param {Parameters<R['removeEventListener']>} args
-	 * @returns {this} Use to chain other listeners or methods.
+	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {keyof M} K
+	 * @overload
+	 * @param {K} type
+	 * @param {M[K]} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {this}
 	 */
-	off(...args) {
-		// @ts-ignore
-		this.#target.removeEventListener(...args);
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
+	 */
+	off(type, listener, options) {
+		this.#target.removeEventListener(type, listener, options);
 		return this;
 	}
 
