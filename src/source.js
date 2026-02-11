@@ -4,6 +4,7 @@ import { DBRequest } from './req';
 import { cursorArgs } from './util.js';
 
 /**
+ * Read-only methods shared by both objects stores and their indexes.
  * @template {IDBObjectStore | IDBIndex} T
  */
 export class ReadOnlySource {
