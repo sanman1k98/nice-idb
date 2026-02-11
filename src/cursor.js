@@ -65,7 +65,7 @@ export class ReadOnlyKeyCursor {
 
 	/**
 	 * @internal
-	 * @param {Event & { target: IDBRequest }} event
+	 * @param {Event & { target: IDBRequest<C | null> }} event
 	 */
 	handleEvent(event) {
 		const { result, error } = event.target;
