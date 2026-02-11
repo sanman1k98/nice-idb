@@ -69,7 +69,7 @@ export class ReadOnlyKeyCursor {
 	}
 
 	/**
-	 * @protected
+	 * @internal
 	 */
 	async iterate() {
 		if (this.#pending)
