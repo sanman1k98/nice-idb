@@ -1,5 +1,5 @@
 import { Database } from '#nice-idb/db';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 describe('cursors', () => {
 	describe('async iterable usage', () => {
@@ -54,6 +54,20 @@ describe('cursors', () => {
 			}
 
 			expect(iters).toBeCloseTo(size / 2);
+		});
+
+		it('can handle no matching records', async () => {
+			const store = testDB.store('data');
+			const key = '404 not found';
+			await expect(store.get(key)).resolves.toBeUndefined();
+
+			const loop = vi.fn(async () => {
+				for await (const _ of store.cursor({ only: key }))
+					expect.unreachable('No matching records');
+				return true;
+			});
+
+			await expect(loop()).resolves.toBeTruthy();
 		});
 	});
 });
