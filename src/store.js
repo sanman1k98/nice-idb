@@ -24,13 +24,6 @@ export class ReadOnlyStore extends ReadOnlySource {
 
 export class ReadWriteStore extends ReadOnlyStore {
 	/**
-	 * @param {IDBObjectStore} store
-	 */
-	static wrap(store) {
-		return new this(store);
-	}
-
-	/**
 	 * @param {any} value
 	 * @param {IDBValidKey | undefined} [key]
 	 */

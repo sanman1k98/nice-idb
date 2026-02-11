@@ -30,13 +30,6 @@ export class ReadOnlyIndex extends ReadOnlySource {
 		const req = super.target.openKeyCursor(...args);
 		return IndexCursor.readonlyKey(req);
 	}
-
-	/**
-	 * @param {IDBIndex} index
-	 */
-	static wrap(index) {
-		return new this(index);
-	}
 }
 
 export class ReadWriteIndex extends ReadOnlyIndex {

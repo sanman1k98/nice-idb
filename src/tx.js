@@ -235,14 +235,6 @@ export class ReadOnlyTransaction {
 	[Symbol.dispose]() {
 		this.#target.commit();
 	}
-
-	/**
-	 * @param {IDBTransaction} tx
-	 * @returns {ReadOnlyTransaction} - A wrapped transaction.
-	 */
-	static wrap(tx) {
-		return new this(tx);
-	}
 }
 
 export class ReadWriteTransaction extends ReadOnlyTransaction {
