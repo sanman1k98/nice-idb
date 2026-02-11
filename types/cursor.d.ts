@@ -9,29 +9,65 @@ export class ReadOnlyKeyCursor<C extends IDBCursor = IDBCursor> implements Async
     constructor(request: IDBRequest<C | null>);
     /** @type {C} */
     get target(): C;
+    /**
+     * Will be true when the underlying request's state is "pending".
+     * @type {boolean}
+     */
+    get pending(): boolean;
+    /**
+     * Can be used as the condition for a while-loop.
+     */
     get done(): boolean;
     get dir(): IDBCursorDirection;
     get key(): IDBValidKey;
     get primaryKey(): IDBValidKey;
     /**
      * @internal
-     * @param {Event & { target: IDBRequest }} event
+     * @param {Event & { target: IDBRequest<C | null> }} event
      */
-    handleEvent(event: Event & {
-        target: IDBRequest;
+    handleEvent({ target }: Event & {
+        target: IDBRequest<C | null>;
     }): void;
     /**
      * @internal
+     * @type {Promise<C | null>}
      */
-    iterate(): Promise<this>;
+    get _iteration(): Promise<C | null>;
     /**
      * @param {number} count
      */
     advance(count: number): Promise<this>;
     /**
+     * @example
+     * for await (const c of source.cursor()) {
+     *   // Do stuff...
+     *   // ...
+     *   // Override the async iterator's implicit continue request and specify a key.
+     *   // The async iterator will await the pending request before the next iteration..
+     *   cursor.continue(someKey)
+     * }
+     * @example
+     * const cursor = await source.cursor().open()
+     * while (cursor.done === false) {
+     *   // Do stuff...
+     *   // ...
+     *   // Call with or without specifying a key.
+     *   // Await the returned promise to complete the request.
+     *   await cursor.continue()
+     * }
      * @param {IDBValidKey} [key]
      */
     continue(key?: IDBValidKey): Promise<this>;
+    /**
+     * Call and await before using in a while-loop.
+     * @example
+     * const cursor = await source.cursor().open()
+     * while (cursor.done === false) {
+     *   // Do stuff...
+     *   await cursor.continue()
+     * }
+     */
+    open(): Promise<this>;
     /**
      * @returns {Promise<IteratorResult<this, null>>} Next value.
      */
@@ -71,48 +107,76 @@ declare const ReadOnlyIndexKeyCursor_base: {
          */
         continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
         "__#private@#done": boolean;
-        /** @type {PromiseWithResolvers<{ result: C | null, error: DOMException | null }> | undefined} */ "__#private@#pending": PromiseWithResolvers<{
-            result: any;
-            error: DOMException | null;
-        }> | undefined;
-        /** @type {IDBRequest<C | null>} */ "__#private@#request": IDBRequest<any>;
+        /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
+        /** @type {IDBRequest<C | null>} @readonly */ readonly "__#private@#request": IDBRequest<any>;
         /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
         /** @type {C} */
         get target(): any;
+        /**
+         * Will be true when the underlying request's state is "pending".
+         * @type {boolean}
+         */
+        get pending(): boolean;
+        /**
+         * Can be used as the condition for a while-loop.
+         */
         get done(): boolean;
         get dir(): IDBCursorDirection;
         get key(): IDBValidKey;
         get primaryKey(): IDBValidKey;
-        /** @type {((value: { result: C | null, error: DOMException | null }) => void)} */
-        get "__#private@#resolve"(): (value: {
-            result: any;
-            error: DOMException | null;
-        }) => void;
-        /** @type {Promise<{ result: C | null, error: DOMException | null }>} */
-        get "__#private@#iteration"(): Promise<{
-            result: any;
-            error: DOMException | null;
-        }>;
+        /** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
+        get "__#private@#resolvers"(): {
+            resolve: (value: any) => void;
+            reject: (reason: any) => void;
+        };
         "__#private@#cleanup"(): void;
         /**
          * @internal
-         * @param {Event & { target: IDBRequest }} event
+         * @param {Event & { target: IDBRequest<C | null> }} event
          */
-        handleEvent(event: Event & {
-            target: IDBRequest;
+        handleEvent({ target }: Event & {
+            target: IDBRequest<any>;
         }): void;
         /**
          * @internal
+         * @type {Promise<C | null>}
          */
-        iterate(): Promise</*elided*/ any>;
+        get _iteration(): Promise<any>;
         /**
          * @param {number} count
          */
         advance(count: number): Promise</*elided*/ any>;
         /**
+         * @example
+         * for await (const c of source.cursor()) {
+         *   // Do stuff...
+         *   // ...
+         *   // Override the async iterator's implicit continue request and specify a key.
+         *   // The async iterator will await the pending request before the next iteration..
+         *   cursor.continue(someKey)
+         * }
+         * @example
+         * const cursor = await source.cursor().open()
+         * while (cursor.done === false) {
+         *   // Do stuff...
+         *   // ...
+         *   // Call with or without specifying a key.
+         *   // Await the returned promise to complete the request.
+         *   await cursor.continue()
+         * }
          * @param {IDBValidKey} [key]
          */
         continue(key?: IDBValidKey): Promise</*elided*/ any>;
+        /**
+         * Call and await before using in a while-loop.
+         * @example
+         * const cursor = await source.cursor().open()
+         * while (cursor.done === false) {
+         *   // Do stuff...
+         *   await cursor.continue()
+         * }
+         */
+        open(): Promise</*elided*/ any>;
         /**
          * @returns {Promise<IteratorResult<this, null>>} Next value.
          */
@@ -141,48 +205,76 @@ declare const ReadOnlyIndexCursor_base: {
          */
         continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
         "__#private@#done": boolean;
-        /** @type {PromiseWithResolvers<{ result: C | null, error: DOMException | null }> | undefined} */ "__#private@#pending": PromiseWithResolvers<{
-            result: any;
-            error: DOMException | null;
-        }> | undefined;
-        /** @type {IDBRequest<C | null>} */ "__#private@#request": IDBRequest<any>;
+        /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
+        /** @type {IDBRequest<C | null>} @readonly */ readonly "__#private@#request": IDBRequest<any>;
         /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
         /** @type {C} */
         get target(): any;
+        /**
+         * Will be true when the underlying request's state is "pending".
+         * @type {boolean}
+         */
+        get pending(): boolean;
+        /**
+         * Can be used as the condition for a while-loop.
+         */
         get done(): boolean;
         get dir(): IDBCursorDirection;
         get key(): IDBValidKey;
         get primaryKey(): IDBValidKey;
-        /** @type {((value: { result: C | null, error: DOMException | null }) => void)} */
-        get "__#private@#resolve"(): (value: {
-            result: any;
-            error: DOMException | null;
-        }) => void;
-        /** @type {Promise<{ result: C | null, error: DOMException | null }>} */
-        get "__#private@#iteration"(): Promise<{
-            result: any;
-            error: DOMException | null;
-        }>;
+        /** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
+        get "__#private@#resolvers"(): {
+            resolve: (value: any) => void;
+            reject: (reason: any) => void;
+        };
         "__#private@#cleanup"(): void;
         /**
          * @internal
-         * @param {Event & { target: IDBRequest }} event
+         * @param {Event & { target: IDBRequest<C | null> }} event
          */
-        handleEvent(event: Event & {
-            target: IDBRequest;
+        handleEvent({ target }: Event & {
+            target: IDBRequest<any>;
         }): void;
         /**
          * @internal
+         * @type {Promise<C | null>}
          */
-        iterate(): Promise</*elided*/ any>;
+        get _iteration(): Promise<any>;
         /**
          * @param {number} count
          */
         advance(count: number): Promise</*elided*/ any>;
         /**
+         * @example
+         * for await (const c of source.cursor()) {
+         *   // Do stuff...
+         *   // ...
+         *   // Override the async iterator's implicit continue request and specify a key.
+         *   // The async iterator will await the pending request before the next iteration..
+         *   cursor.continue(someKey)
+         * }
+         * @example
+         * const cursor = await source.cursor().open()
+         * while (cursor.done === false) {
+         *   // Do stuff...
+         *   // ...
+         *   // Call with or without specifying a key.
+         *   // Await the returned promise to complete the request.
+         *   await cursor.continue()
+         * }
          * @param {IDBValidKey} [key]
          */
         continue(key?: IDBValidKey): Promise</*elided*/ any>;
+        /**
+         * Call and await before using in a while-loop.
+         * @example
+         * const cursor = await source.cursor().open()
+         * while (cursor.done === false) {
+         *   // Do stuff...
+         *   await cursor.continue()
+         * }
+         */
+        open(): Promise</*elided*/ any>;
         /**
          * @returns {Promise<IteratorResult<this, null>>} Next value.
          */
@@ -207,48 +299,76 @@ declare const ReadWriteIndexCursor_base: {
          */
         continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
         "__#private@#done": boolean;
-        /** @type {PromiseWithResolvers<{ result: C | null, error: DOMException | null }> | undefined} */ "__#private@#pending": PromiseWithResolvers<{
-            result: any;
-            error: DOMException | null;
-        }> | undefined;
-        /** @type {IDBRequest<C | null>} */ "__#private@#request": IDBRequest<any>;
+        /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
+        /** @type {IDBRequest<C | null>} @readonly */ readonly "__#private@#request": IDBRequest<any>;
         /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
         /** @type {C} */
         get target(): any;
+        /**
+         * Will be true when the underlying request's state is "pending".
+         * @type {boolean}
+         */
+        get pending(): boolean;
+        /**
+         * Can be used as the condition for a while-loop.
+         */
         get done(): boolean;
         get dir(): IDBCursorDirection;
         get key(): IDBValidKey;
         get primaryKey(): IDBValidKey;
-        /** @type {((value: { result: C | null, error: DOMException | null }) => void)} */
-        get "__#private@#resolve"(): (value: {
-            result: any;
-            error: DOMException | null;
-        }) => void;
-        /** @type {Promise<{ result: C | null, error: DOMException | null }>} */
-        get "__#private@#iteration"(): Promise<{
-            result: any;
-            error: DOMException | null;
-        }>;
+        /** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
+        get "__#private@#resolvers"(): {
+            resolve: (value: any) => void;
+            reject: (reason: any) => void;
+        };
         "__#private@#cleanup"(): void;
         /**
          * @internal
-         * @param {Event & { target: IDBRequest }} event
+         * @param {Event & { target: IDBRequest<C | null> }} event
          */
-        handleEvent(event: Event & {
-            target: IDBRequest;
+        handleEvent({ target }: Event & {
+            target: IDBRequest<any>;
         }): void;
         /**
          * @internal
+         * @type {Promise<C | null>}
          */
-        iterate(): Promise</*elided*/ any>;
+        get _iteration(): Promise<any>;
         /**
          * @param {number} count
          */
         advance(count: number): Promise</*elided*/ any>;
         /**
+         * @example
+         * for await (const c of source.cursor()) {
+         *   // Do stuff...
+         *   // ...
+         *   // Override the async iterator's implicit continue request and specify a key.
+         *   // The async iterator will await the pending request before the next iteration..
+         *   cursor.continue(someKey)
+         * }
+         * @example
+         * const cursor = await source.cursor().open()
+         * while (cursor.done === false) {
+         *   // Do stuff...
+         *   // ...
+         *   // Call with or without specifying a key.
+         *   // Await the returned promise to complete the request.
+         *   await cursor.continue()
+         * }
          * @param {IDBValidKey} [key]
          */
         continue(key?: IDBValidKey): Promise</*elided*/ any>;
+        /**
+         * Call and await before using in a while-loop.
+         * @example
+         * const cursor = await source.cursor().open()
+         * while (cursor.done === false) {
+         *   // Do stuff...
+         *   await cursor.continue()
+         * }
+         */
+        open(): Promise</*elided*/ any>;
         /**
          * @returns {Promise<IteratorResult<this, null>>} Next value.
          */

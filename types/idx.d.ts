@@ -2,10 +2,6 @@
  * @extends {ReadOnlySource<IDBIndex>}
  */
 export class ReadOnlyIndex extends ReadOnlySource<IDBIndex> {
-    /**
-     * @param {IDBIndex} index
-     */
-    static wrap(index: IDBIndex): ReadOnlyIndex;
     constructor(source: IDBIndex);
     get multiEntry(): boolean;
     get unique(): boolean;

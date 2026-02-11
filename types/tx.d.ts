@@ -3,11 +3,6 @@
  */
 export class ReadOnlyTransaction implements Disposable {
     /**
-     * @param {IDBTransaction} tx
-     * @returns {ReadOnlyTransaction} - A wrapped transaction.
-     */
-    static wrap(tx: IDBTransaction): ReadOnlyTransaction;
-    /**
      * @param {IDBTransaction} tx - The transaction instance to wrap.
      */
     constructor(tx: IDBTransaction);
