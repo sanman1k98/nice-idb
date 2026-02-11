@@ -19,7 +19,11 @@ export class ReadOnlyKeyCursor {
 		return this.#request.result;
 	}
 
-	get done() { return this.#done ||= !this.#request.result; }
+	get done() {
+		return this.#done
+			||= this.#request.readyState === 'done'
+				&& !this.#request.result;
+	}
 
 	get dir() { return this.target.direction; }
 
