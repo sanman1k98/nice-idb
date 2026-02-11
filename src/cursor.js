@@ -157,15 +157,16 @@ export class ReadWriteCursor extends ReadOnlyCursor {
 }
 
 /**
- * Methods that can only be called if the cursor is coming from an index.
  * @template {Constructor<ReadOnlyKeyCursor<any>>} T
  * @param {T} Base
  */
 function IndexOnly(Base) {
 	return class extends Base {
 		/**
+		 * Can only be called on a cursor coming from an index.
 		 * @param {IDBValidKey} key
 		 * @param {IDBValidKey} primaryKey
+		 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
 		 */
 		continuePrimaryKey(key, primaryKey) {
 			super.target.continuePrimaryKey(key, primaryKey);
