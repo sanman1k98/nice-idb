@@ -1,6 +1,6 @@
 /** @import { OpenCursorOptions } from './util.js' */
 import { ReadWriteCursor } from './cursor.js';
-import { Index } from './idx.js';
+import { ReadOnlyIndex, ReadWriteIndex } from './idx.js';
 import { DBRequest } from './req.js';
 import { ReadOnlySource } from './source.js';
 import { cursorArgs, toStrings } from './util.js';
@@ -18,7 +18,7 @@ export class ReadOnlyStore extends ReadOnlySource {
 	 */
 	index(name) {
 		const idx = super.target.index(name);
-		return Index.readonly(idx);
+		return new ReadOnlyIndex(idx);
 	}
 }
 
@@ -77,7 +77,7 @@ export class ReadWriteStore extends ReadOnlyStore {
 	 */
 	index(name) {
 		const idx = super.target.index(name);
-		return Index.readwrite(idx);
+		return new ReadWriteIndex(idx);
 	}
 }
 
@@ -89,7 +89,7 @@ export class UpgradableStore extends ReadWriteStore {
 	 */
 	createIndex(name, keyPath, options) {
 		const idx = super.target.createIndex(name, keyPath, options);
-		return Index.readwrite(idx);
+		return new ReadWriteIndex(idx);
 	}
 
 	/**
