@@ -5,7 +5,7 @@ import { databaseExists, delay, deleteAllDatabases } from './utils';
 
 describe('basic usage', () => {
 	it('can open and close a connection', async () => {
-		const db = new Database('test-db');
+		const db = Database.init('test-db');
 		const close = vi.fn(() => db.close());
 
 		await expect(db.open()).resolves.toBeInstanceOf(Database);
@@ -18,7 +18,7 @@ describe('basic usage', () => {
 	});
 
 	it('has similar properties to an IDBDatabase', async () => {
-		const db = await new Database('test-db').open();
+		const db = await Database.init('test-db').open();
 
 		expect(db.name).toBeTypeOf('string');
 		expect(db.version).toBeTypeOf('number');
@@ -33,7 +33,7 @@ describe('defining upgrades', () => {
 
 	describe('basic usage', () => {
 		it('can define the structure of a new database', async () => {
-			const db = new Database('test-db').define((version, db) => {
+			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
@@ -58,7 +58,7 @@ describe('defining upgrades', () => {
 		afterEach(() => testDB!.close());
 
 		it('will error when accessed outside of upgrade callbacks', async () => {
-			testDB = new Database('test-db').define((version, db, tx) => {
+			testDB = Database.init('test-db').define((version, db, tx) => {
 				expect.soft(() => db.version).toThrow('Cannot access');
 				expect.soft(() => tx.mode).toThrow('Cannot access');
 				version(1, () => {
@@ -76,7 +76,7 @@ describe('defining upgrades', () => {
 		let testDB: Database;
 
 		beforeEach(async () => {
-			const existingDB = new Database('test-db')
+			const existingDB = Database.init('test-db')
 				.define((version, db) => {
 					version(1, async () => {
 						const logs = db.createStore('logs', { autoIncrement: true });
@@ -87,7 +87,7 @@ describe('defining upgrades', () => {
 			await existingDB.upgrade();
 			existingDB.close();
 
-			testDB = new Database('test-db');
+			testDB = Database.init('test-db');
 		});
 
 		afterEach(async () => {
@@ -117,7 +117,7 @@ describe('defining upgrades', () => {
 		beforeEach(async () => deleteAllDatabases());
 
 		it('will create an upgrade tranaction for each upgrade', async () => {
-			const db = new Database('test-db').define((version, db, tx) => {
+			const db = Database.init('test-db').define((version, db, tx) => {
 				version(1, async () => {
 					expect(db.version).toBe(1);
 					tx.commit();
@@ -139,7 +139,7 @@ describe('defining upgrades', () => {
 		});
 
 		it('will abort an upgrade if an error is thrown', async () => {
-			const db = new Database('test-db').define((version, db) => {
+			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
@@ -153,7 +153,7 @@ describe('defining upgrades', () => {
 		});
 
 		it('supports manually committing at the end of an upgrade', async () => {
-			const db = new Database('test-db').define((version, db, tx) => {
+			const db = Database.init('test-db').define((version, db, tx) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
@@ -179,7 +179,7 @@ describe('defining upgrades', () => {
 		beforeEach(async () => deleteAllDatabases());
 
 		it('can unexpectedly yield control when awaiting', async () => {
-			const db = new Database('test-db').define((version, db) => {
+			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
