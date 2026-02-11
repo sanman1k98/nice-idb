@@ -287,3 +287,5 @@ export class DBRequest {
 		return new this(request);
 	}
 }
+
+export default DBRequest;
