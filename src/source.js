@@ -8,7 +8,7 @@ import { cursorArgs } from './util.js';
  * @template {IDBObjectStore | IDBIndex} T
  */
 export class ReadOnlySource {
-	/** @type {T} */ #target;
+	/** @type {T} @readonly */ #target;
 
 	get name() { return this.#target.name; }
 

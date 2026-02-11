@@ -344,7 +344,7 @@ export class Database extends BaseDatabase {
 	/** @type {IDBOpenDBRequest | undefined} */ #request;
 	/** @type {UpgradeState | undefined} */ #state;
 	/** @type {number | undefined} */ #version;
-	/** @type {string} */ #name;
+	/** @type {string} @readonly */ #name;
 
 	/**
 	 * @override

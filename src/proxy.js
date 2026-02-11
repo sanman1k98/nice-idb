@@ -3,8 +3,8 @@
  * @implements {ProxyHandler<T>}
  */
 export class RedirectableProxy {
-	/** @type {T} */ #proxy;
-	/** @type {() => void} */ #revoke;
+	/** @type {T} @readonly */ #proxy;
+	/** @type {() => void} @readonly */ #revoke;
 	/** @type {T | undefined} */ #target;
 
 	#message = 'Cannot access proxy';

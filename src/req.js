@@ -39,11 +39,11 @@
  * @implements {PromiseLike<TResolved | TRejected>}
  */
 export class DBRequest {
-	/** @type {IDBRequest} */ #target;
+	/** @type {IDBRequest} @readonly */ #target;
 
 	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
-	/** @type {((value: R['result']) => TResolved | PromiseLike<TResolved>) | undefined | null} */ #onfulfilled;
-	/** @type {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} */ #onrejected;
+	/** @type {((value: R['result']) => TResolved | PromiseLike<TResolved>) | undefined | null} @readonly */ #onfulfilled;
+	/** @type {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} @readonly */ #onrejected;
 
 	get state() { return this.#target.readyState; }
 

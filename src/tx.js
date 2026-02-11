@@ -5,8 +5,8 @@ import { toStrings } from './util.js';
  * @implements {Disposable}
  */
 export class ReadOnlyTransaction {
-	/** @type {IDBTransaction} */ #target;
-	/** @type {Promise<Event>} */ #finish;
+	/** @type {IDBTransaction} @readonly */ #target;
+	/** @type {Promise<Event>} @readonly */ #finish;
 	/** @type {Event | undefined} */ #event;
 
 	get target() { return this.#target; }
