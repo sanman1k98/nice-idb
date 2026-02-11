@@ -13,6 +13,9 @@ export class ReadOnlySource {
 
 	get keyPath() { return this.#target.keyPath; }
 
+	/**
+	 * @protected
+	 */
 	get target() { return this.#target; }
 
 	get mode() {
