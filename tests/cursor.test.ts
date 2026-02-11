@@ -56,6 +56,22 @@ describe('cursors', () => {
 			expect(iters).toBeCloseTo(size / 2);
 		});
 
+		it('should error when calling cursor.continue() twice without awaiting', async () => {
+			const store = testDB.store('data');
+			let iters = 0;
+
+			const loop = vi.fn(async () => {
+				for await (const c of store.cursor()) {
+					iters++;
+					c.continue();
+					c.continue();
+				}
+			});
+
+			await expect(loop()).rejects.toThrow();
+			expect(iters).toBe(1);
+		});
+
 		it('can handle no matching records', async () => {
 			const store = testDB.store('data');
 			const key = '404 not found';

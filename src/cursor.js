@@ -80,7 +80,7 @@ export class ReadOnlyKeyCursor {
 	/**
 	 * @param {number} count
 	 */
-	async advance(count) {
+	advance(count) {
 		this.target.advance(count);
 		return this._iteration.then(() => this);
 	}
@@ -88,7 +88,7 @@ export class ReadOnlyKeyCursor {
 	/**
 	 * @param {IDBValidKey} [key]
 	 */
-	async continue(key) {
+	continue(key) {
 		this.target.continue(key);
 		return this._iteration.then(() => this);
 	}
@@ -162,7 +162,7 @@ function IndexOnly(Base) {
 		 * @param {IDBValidKey} primaryKey
 		 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
 		 */
-		async continuePrimaryKey(key, primaryKey) {
+		continuePrimaryKey(key, primaryKey) {
 			super.target.continuePrimaryKey(key, primaryKey);
 			return super._iteration.then(() => this);
 		}
