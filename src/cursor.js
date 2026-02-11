@@ -172,7 +172,7 @@ function IndexOnly(Base) {
 		 * @param {IDBValidKey} primaryKey
 		 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
 		 */
-		continuePrimaryKey(key, primaryKey) {
+		async continuePrimaryKey(key, primaryKey) {
 			super.target.continuePrimaryKey(key, primaryKey);
 			return super.iterate();
 		}
