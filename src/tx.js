@@ -267,17 +267,8 @@ export class UpgradeTransaction extends ReadWriteTransaction {
 	}
 }
 
-export class Transaction {
-	static ReadOnly = ReadOnlyTransaction;
-	static ReadWrite = ReadWriteTransaction;
-	static Upgrade = UpgradeTransaction;
+export const readonly = (/** @type {IDBTransaction} */ tx) => new ReadOnlyTransaction(tx);
+export const readwrite = (/** @type {IDBTransaction} */ tx) => new ReadWriteTransaction(tx);
+export const versionchange = (/** @type {IDBTransaction} */ tx) => new UpgradeTransaction(tx);
 
-	/** @param {IDBTransaction} tx */
-	static readonly(tx) { return new this.ReadOnly(tx); }
-
-	/** @param {IDBTransaction} tx */
-	static readwrite(tx) { return new this.ReadWrite(tx); }
-
-	/** @param {IDBTransaction} tx */
-	static versionchange(tx) { return new this.Upgrade(tx); }
-}
+export default { readonly, readwrite, versionchange };

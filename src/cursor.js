@@ -184,36 +184,14 @@ export class ReadOnlyIndexCursor extends IndexOnly(ReadOnlyCursor) { }
 
 export class ReadWriteIndexCursor extends IndexOnly(ReadWriteCursor) { }
 
-export class Cursor {
-	static ReadOnlyKey = ReadOnlyKeyCursor;
-	static ReadOnly = ReadOnlyCursor;
-	static ReadWrite = ReadWriteCursor;
+export const Cursor = {
+	readonlyKey: (/** @type {IDBRequest<IDBCursor | null>} */ request) => new ReadOnlyKeyCursor(request),
+	readonly: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadOnlyCursor(request),
+	readwrite: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadWriteCursor(request),
+};
 
-	/** @param {IDBRequest<IDBCursor | null>} request */
-	static readonlyKey(request) { return new this.ReadOnlyKey(request); }
-
-	/** @param {IDBRequest<IDBCursorWithValue | null>} request */
-	static readonly(request) { return new this.ReadOnly(request); }
-
-	/** @param {IDBRequest<IDBCursorWithValue | null>} request */
-	static readwrite(request) { return new this.ReadWrite(request); }
-
-	static versionchange = this.readwrite;
-}
-
-export class IndexCursor {
-	static ReadOnlyKey = ReadOnlyIndexKeyCursor;
-	static ReadOnly = ReadOnlyIndexCursor;
-	static ReadWrite = ReadWriteIndexCursor;
-
-	/** @param {IDBRequest<IDBCursor | null>} request */
-	static readonlyKey(request) { return new this.ReadOnlyKey(request); }
-
-	/** @param {IDBRequest<IDBCursorWithValue | null>} request */
-	static readonly(request) { return new this.ReadOnly(request); }
-
-	/** @param {IDBRequest<IDBCursorWithValue | null>} request */
-	static readwrite(request) { return new this.ReadWrite(request); }
-
-	static versionchange = this.readwrite;
-}
+export const IndexCursor = {
+	readonlyKey: (/** @type {IDBRequest<IDBCursor | null>} */ request) => new ReadOnlyIndexKeyCursor(request),
+	readonly: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadOnlyIndexCursor(request),
+	readwrite: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadWriteIndexCursor(request),
+};

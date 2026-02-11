@@ -100,17 +100,8 @@ export class UpgradableStore extends ReadWriteStore {
 	}
 }
 
-export class Store {
-	static ReadOnly = ReadOnlyStore;
-	static ReadWrite = ReadWriteStore;
-	static Upgradable = UpgradableStore;
+export const readonly = (/** @type {IDBObjectStore} */ store) => new ReadOnlyStore(store);
+export const readwrite = (/** @type {IDBObjectStore} */ store) => new ReadWriteStore(store);
+export const versionchange = (/** @type {IDBObjectStore} */ store) => new UpgradableStore(store);
 
-	/** @param {IDBObjectStore} store */
-	static readonly(store) { return new this.ReadOnly(store); }
-
-	/** @param {IDBObjectStore} store */
-	static readwrite(store) { return new this.ReadWrite(store); }
-
-	/** @param {IDBObjectStore} store */
-	static versionchange(store) { return new this.Upgradable(store); }
-}
+export default { readonly, readwrite, versionchange };

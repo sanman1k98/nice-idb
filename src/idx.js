@@ -51,15 +51,8 @@ export class ReadWriteIndex extends ReadOnlyIndex {
 	}
 }
 
-export class Index {
-	static ReadOnly = ReadOnlyIndex;
-	static ReadWrite = ReadWriteIndex;
+export const readonly = (/** @type {IDBIndex} */ idx) => new ReadOnlyIndex(idx);
+export const readwrite = (/** @type {IDBIndex} */ idx) => new ReadWriteIndex(idx);
+export { readwrite as versionchange };
 
-	/** @param {IDBIndex} index */
-	static readonly(index) { return new this.ReadOnly(index); }
-
-	/** @param {IDBIndex} index */
-	static readwrite(index) { return new this.ReadWrite(index); }
-
-	static versionchange = this.readwrite;
-}
+export default { readonly, readwrite, versionchange: readwrite };
