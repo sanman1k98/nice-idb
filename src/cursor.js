@@ -9,7 +9,7 @@ export class ReadOnlyKeyCursor {
 	#done = false;
 
 	/** @type {PromiseWithResolvers<C | null> | undefined} */ #pending;
-	/** @type {IDBRequest<C | null>} */ #request;
+	/** @type {IDBRequest<C | null>} @readonly */ #request;
 	/** @type {IDBValidKey | undefined} */ #prevIterKey;
 
 	/** @type {C} */
