@@ -13,6 +13,22 @@
 			"types": "./types/index.d.ts",
 			"default": "./src/index.js"
 		},
+		"./cursor": {
+			"types": "./types/cursor.d.js",
+			"default": "./src/cursor.js"
+		},
+		"./idx": {
+			"types": "./types/idx.d.js",
+			"default": "./src/idx.js"
+		},
+		"./store": {
+			"types": "./types/store.d.js",
+			"default": "./src/store.js"
+		},
+		"./tx": {
+			"types": "./types/tx.d.js",
+			"default": "./src/tx.js"
+		},
 		"./types": {
 			"types": "./src/types.d.js"
 		},
