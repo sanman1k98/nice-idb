@@ -33,7 +33,7 @@ export class ReadOnlySource {
 	 */
 	count(key) {
 		const req = this.#target.count(key);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**
@@ -41,7 +41,7 @@ export class ReadOnlySource {
 	 */
 	get(query) {
 		const req = this.#target.get(query);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**
@@ -50,7 +50,7 @@ export class ReadOnlySource {
 	 */
 	getAll(query, count) {
 		const req = this.#target.getAll(query, count);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**
@@ -59,7 +59,7 @@ export class ReadOnlySource {
 	 */
 	getAllKeys(query, count) {
 		const req = this.#target.getAllKeys(query, count);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**
@@ -67,7 +67,7 @@ export class ReadOnlySource {
 	 */
 	getKey(key) {
 		const req = this.#target.getKey(key);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**

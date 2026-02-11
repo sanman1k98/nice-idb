@@ -36,12 +36,12 @@ export class ReadWriteStore extends ReadOnlyStore {
 	 */
 	add(value, key) {
 		const req = super.target.add(value, key);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	clear() {
 		const req = super.target.clear();
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**
@@ -49,7 +49,7 @@ export class ReadWriteStore extends ReadOnlyStore {
 	 */
 	delete(key) {
 		const req = super.target.delete(key);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**
@@ -58,7 +58,7 @@ export class ReadWriteStore extends ReadOnlyStore {
 	 */
 	put(value, key) {
 		const req = super.target.put(value, key);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**

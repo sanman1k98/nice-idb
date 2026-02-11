@@ -278,15 +278,12 @@ export class DBRequest {
 	}
 
 	/**
+	 * Promisify an `IDBRequest` to await its result or reject if it errors.
 	 * @template {IDBRequest} R
-	 * @template [TResolved = R['result']]
-	 * @template [TRejected = never]
 	 * @param {R} request
-	 * @param {((value: R['result']) => TResolved | PromiseLike<TResolved>) | null | undefined} [onfulfilled]
-	 * @param {((reason: any) => TRejected | PromiseLike<TRejected>) | null | undefined} [onrejected]
-	 * @returns {DBRequest<R, TResolved, TRejected>} Wrapped request.
+	 * @returns {DBRequest<R>} Wrapped request.
 	 */
-	static wrap(request, onfulfilled, onrejected) {
-		return new this(request, onfulfilled, onrejected);
+	static promisify(request) {
+		return new this(request);
 	}
 }

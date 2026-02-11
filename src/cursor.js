@@ -143,7 +143,7 @@ export class ReadOnlyCursor extends ReadOnlyKeyCursor {
 export class ReadWriteCursor extends ReadOnlyCursor {
 	delete() {
 		const req = super.target.delete();
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 
 	/**
@@ -151,7 +151,7 @@ export class ReadWriteCursor extends ReadOnlyCursor {
 	 */
 	update(value) {
 		const req = super.target.update(value);
-		return DBRequest.wrap(req);
+		return DBRequest.promisify(req);
 	}
 }
 
