@@ -19,10 +19,18 @@ export class ReadOnlyKeyCursor {
 		return this.#request.result;
 	}
 
+	/**
+	 * Will be true when the underlying request's state is "pending".
+	 * @type {boolean}
+	 */
+	get pending() { return this.#request.readyState === 'pending'; }
+
+	/**
+	 * Can be used as the condition for a while-loop.
+	 */
 	get done() {
 		return this.#done
-			||= this.#request.readyState === 'done'
-				&& !this.#request.result;
+			||= !this.pending && !this.#request.result;
 	}
 
 	get dir() { return this.target.direction; }
@@ -105,7 +113,7 @@ export class ReadOnlyKeyCursor {
 	async next() {
 		if (this.#done)
 			return { value: null, done: true };
-		else if (this.#request.readyState === 'done')
+		else if (!this.pending)
 			this.target.continue();
 
 		return this._iteration.then((cursor) => {
