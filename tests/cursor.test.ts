@@ -69,5 +69,16 @@ describe('cursors', () => {
 
 			await expect(loop()).resolves.toBeTruthy();
 		});
+
+		it('updates the "key" prop on every iteration', async () => {
+			const store = testDB.store('data');
+			expect.assertions(await store.count());
+			let prevKey: IDBValidKey | undefined;
+
+			for await (const { key } of store.cursor()) {
+				expect(key).not.toBe(prevKey);
+				prevKey = key;
+			}
+		});
 	});
 });
