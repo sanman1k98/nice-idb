@@ -81,4 +81,37 @@ describe('cursors', () => {
 			}
 		});
 	});
+
+	describe('while-loop usage', () => {
+		let testDB: Database;
+
+		beforeAll(async () => {
+			testDB = Database.init('test-data').define((version, db) => {
+				version(1, async () => {
+					const data = db.createStore('data', { autoIncrement: true });
+					for (let i = 1; i <= 10; i++)
+						await data.add(i);
+				});
+			});
+
+			await testDB.upgrade();
+		});
+
+		afterAll(() => testDB.close());
+
+		it('can be used in a while loop', async () => {
+			const store = testDB.store('data');
+			const size = await store.count();
+			let iters = 0;
+
+			const cursor = await store.cursor().open();
+
+			while (cursor.done === false) {
+				iters++;
+				await cursor.continue();
+			}
+
+			expect(iters).toBe(size);
+		});
+	});
 });
