@@ -94,6 +94,23 @@ export class ReadOnlyKeyCursor {
 	}
 
 	/**
+	 * @example
+	 * for await (const c of source.cursor()) {
+	 *   // Do stuff...
+	 *   // ...
+	 *   // Override the async iterator's implicit continue request and specify a key.
+	 *   // The async iterator will await the pending request before the next iteration..
+	 *   cursor.continue(someKey)
+	 * }
+	 * @example
+	 * const cursor = await source.cursor().open()
+	 * while (cursor.done === false) {
+	 *   // Do stuff...
+	 *   // ...
+	 *   // Call with or without specifying a key.
+	 *   // Await the returned promise to complete the request.
+	 *   await cursor.continue()
+	 * }
 	 * @param {IDBValidKey} [key]
 	 */
 	continue(key) {
@@ -101,6 +118,15 @@ export class ReadOnlyKeyCursor {
 		return this._iteration.then(() => this);
 	}
 
+	/**
+	 * Call and await before using in a while-loop.
+	 * @example
+	 * const cursor = await source.cursor().open()
+	 * while (cursor.done === false) {
+	 *   // Do stuff...
+	 *   await cursor.continue()
+	 * }
+	 */
 	async open() {
 		if (this.#prevIterKey === undefined)
 			return this._iteration.then(() => this);
