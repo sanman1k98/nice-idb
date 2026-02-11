@@ -8,7 +8,7 @@ import { DBRequest } from './req';
 export class ReadOnlyKeyCursor {
 	#done = false;
 
-	/** @type {PromiseWithResolvers<{ result: C | null, error: DOMException | null }> | undefined} */ #pending;
+	/** @type {PromiseWithResolvers<C | null> | undefined} */ #pending;
 	/** @type {IDBRequest<C | null>} */ #request;
 	/** @type {IDBValidKey | undefined} */ #prevIterKey;
 
@@ -40,18 +40,11 @@ export class ReadOnlyKeyCursor {
 		this.#request = request;
 	}
 
-	/** @type {((value: { result: C | null, error: DOMException | null }) => void)} */
-	get #resolve() {
-		this.#pending ??= Promise.withResolvers();
-		return this.#pending.resolve;
-	}
-
-	/** @type {Promise<{ result: C | null, error: DOMException | null }>} */
-	get #iteration() {
-		this.#pending ??= Promise.withResolvers();
-		return this.#pending.promise.finally(
-			() => this.#pending = undefined,
-		);
+	/** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
+	get #resolvers() {
+		const { promise: _, ...resolvers }
+			= this.#pending ??= Promise.withResolvers();
+		return resolvers;
 	}
 
 	#cleanup() {
@@ -67,41 +60,43 @@ export class ReadOnlyKeyCursor {
 	 * @internal
 	 * @param {Event & { target: IDBRequest<C | null> }} event
 	 */
-	handleEvent(event) {
-		const { result, error } = event.target;
-		return this.#resolve({ result, error });
+	handleEvent({ target }) {
+		const { result, error } = target;
+		const { resolve, reject } = this.#resolvers;
+		!error ? resolve(result) : reject(error);
 	}
 
 	/**
 	 * @internal
+	 * @type {Promise<C | null>}
 	 */
-	async iterate() {
-		if (this.#pending)
-			throw new Error('PendingCursorIteration');
-		return this.#iteration.then(({ result, error }) => {
-			if (error)
-				throw error;
-			this.#prevIterKey = result?.key;
-			return this;
-		});
+	get _iteration() {
+		this.#pending ??= Promise.withResolvers();
+		return this.#pending.promise.then((cursor) => {
+			return (this.#prevIterKey = cursor?.key, cursor);
+		}).finally(() => this.#pending = undefined);
 	}
 
 	/**
 	 * @param {number} count
 	 */
 	async advance(count) {
-		if (this.#prevIterKey !== undefined)
-			this.target.advance(count);
-		return this.iterate();
+		this.target.advance(count);
+		return this._iteration.then(() => this);
 	}
 
 	/**
 	 * @param {IDBValidKey} [key]
 	 */
 	async continue(key) {
-		if (this.#prevIterKey !== undefined)
-			this.target.continue(key);
-		return this.iterate();
+		this.target.continue(key);
+		return this._iteration.then(() => this);
+	}
+
+	async open() {
+		if (this.#prevIterKey === undefined)
+			return this._iteration.then(() => this);
+		throw new Error('CursorAlreadyOpened');
 	}
 
 	/**
@@ -113,15 +108,10 @@ export class ReadOnlyKeyCursor {
 		else if (this.#request.readyState === 'done')
 			this.target.continue();
 
-		return this.#iteration.then(({ result, error }) => {
-			if (error)
-				throw error;
-			if (!result) {
-				this.#cleanup();
-				return { value: null, done: true };
-			}
-			this.#prevIterKey = result.key;
-			return { value: this };
+		return this._iteration.then((cursor) => {
+			return !cursor
+				? (this.#cleanup(), { value: null, done: true })
+				: { value: this };
 		});
 	}
 
@@ -174,7 +164,7 @@ function IndexOnly(Base) {
 		 */
 		async continuePrimaryKey(key, primaryKey) {
 			super.target.continuePrimaryKey(key, primaryKey);
-			return super.iterate();
+			return super._iteration.then(() => this);
 		}
 	};
 }
