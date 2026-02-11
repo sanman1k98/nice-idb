@@ -1,108 +1,17 @@
-/** @typedef {import('#types').Transaction} Transaction */
 /**
- * @implements {Transaction}
  * @implements {Disposable}
  */
-export class NiceIDBTransaction implements Transaction, Disposable {
-    static Upgrade: {
-        new (tx: IDBTransaction): {
-            /**
-             * @param {string} name
-             * @override
-             */
-            store(name: string): {
-                "__#private@#store": IDBObjectStore;
-                createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters | undefined): import("./idx.js").NiceIDBIndex;
-                deleteIndex(name: string): void;
-                "__#private@#store": IDBObjectStore;
-                get indexes(): readonly string[];
-                get autoIncrement(): boolean;
-                get keyPath(): string | string[] | null;
-                get name(): string;
-                get indexNames(): readonly string[];
-                index(name: string): import("./idx.js").NiceIDBIndex;
-                add(value: any, key?: IDBValidKey): Promise<IDBValidKey>;
-                clear(): Promise<undefined>;
-                count(query?: IDBValidKey | IDBKeyRange): Promise<number>;
-                delete(query: IDBValidKey | IDBKeyRange): Promise<undefined>;
-                get(query: IDBValidKey | IDBKeyRange): Promise<any>;
-                getAll(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<any[]>;
-                getAllKeys(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<IDBValidKey[]>;
-                getKey(query: IDBValidKey | IDBKeyRange): Promise<IDBValidKey | undefined>;
-                put(value: any, key?: IDBValidKey): Promise<IDBValidKey>;
-                iter(opts?: import("./util.js").CursorOptions): AsyncIterable<IDBCursorWithValue>;
-                iterKeys(opts?: import("./util.js").CursorOptions): AsyncIterable<IDBCursor>;
-                [Symbol.asyncIterator](): AsyncGenerator<IDBCursorWithValue, void, any>;
-            };
-            /** @type {IDBTransaction} */ "__#private@#tx": IDBTransaction;
-            /** @type {Promise<Event>} */ "__#private@#finish": Promise<Event>;
-            /** @type {Event | undefined} */ "__#private@#event": Event | undefined;
-            get error(): DOMException | null;
-            get durability(): IDBTransactionDurability;
-            get mode(): IDBTransactionMode;
-            /**
-             * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
-             */
-            get finished(): boolean;
-            get committed(): boolean;
-            get aborted(): boolean;
-            /**
-             * @returns {Promise<void>} A promise for when the transaction commits or aborts.
-             */
-            get finish(): Promise<void>;
-            /**
-             * List of stores in the scope of this transaction.
-             * @see {@link IDBTransaction.prototype.objectStoreNames}
-             */
-            get storeNames(): readonly string[];
-            /** @type {Record<string, NiceIDBStore> | undefined} */
-            "__#private@#storesProxy": Record<string, NiceIDBStore> | undefined;
-            /**
-             * @see {@link IDBTransaction.prototype.objectStoreNames}
-             * Access stores in the scope of this transaction.
-             * @returns {{ [name: string]: NiceIDBStore }} Can be indexed by store names.
-             */
-            get stores(): {
-                [name: string]: NiceIDBStore;
-            };
-            /**
-             * @param {keyof IDBTransactionEventMap} type
-             * @param {(this: IDBTransaction, ev: Event) => any} listener
-             * @param {boolean | AddEventListenerOptions} [options]
-             */
-            addEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | AddEventListenerOptions): void;
-            /**
-             * @param {keyof IDBTransactionEventMap} type
-             * @param {(this: IDBTransaction, ev: Event) => any} listener
-             * @param {boolean | EventListenerOptions} [options]
-             */
-            removeEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | EventListenerOptions): void;
-            abort(): void;
-            /**
-             * A method to explicitly commit the transaction. This is the same method
-             * that will be called when a transaction is assigned to a variable declared
-             * with `using`.
-             *
-             * @example
-             *
-             * ```ts
-             * async function countAllRecords(db: NiceIDB): Promise<number> {
-             *   const storeNames = db.storeNames;
-             *   using tx = db.transaction(storeNames);
-             *   const requests = storeNames.map((name) => tx.store(name).count());
-             *   return Promise.all(requests).reduce((x, y) => x + y);
-             * }
-             * ```
-             */
-            commit(): void;
-            [Symbol.dispose](): void;
-        };
-        Upgrade: /*elided*/ any;
-    };
+export class ReadOnlyTransaction implements Disposable {
+    /**
+     * @param {IDBTransaction} tx
+     * @returns {ReadOnlyTransaction} - A wrapped transaction.
+     */
+    static wrap(tx: IDBTransaction): ReadOnlyTransaction;
     /**
      * @param {IDBTransaction} tx - The transaction instance to wrap.
      */
     constructor(tx: IDBTransaction);
+    get target(): IDBTransaction;
     get error(): DOMException | null;
     get durability(): IDBTransactionDurability;
     get mode(): IDBTransactionMode;
@@ -124,29 +33,102 @@ export class NiceIDBTransaction implements Transaction, Disposable {
     /**
      * Get an object store within the transaction's scope.
      * @param {string} name
-     * @returns {NiceIDBStore} An object store instance.
      */
-    store(name: string): NiceIDBStore;
+    store(name: string): ReadOnlyStore;
     /**
-     * @see {@link IDBTransaction.prototype.objectStoreNames}
-     * Access stores in the scope of this transaction.
-     * @returns {{ [name: string]: NiceIDBStore }} Can be indexed by store names.
-     */
-    get stores(): {
-        [name: string]: NiceIDBStore;
-    };
-    /**
-     * @param {keyof IDBTransactionEventMap} type
-     * @param {(this: IDBTransaction, ev: Event) => any} listener
+     * @template {keyof IDBTransactionEventMap} K
+     * @overload
+     * @param {K} type
+     * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
      * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {void}
      */
-    addEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | AddEventListenerOptions): void;
+    addEventListener<K extends keyof IDBTransactionEventMap>(type: K, listener: (this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any, options?: boolean | AddEventListenerOptions | undefined): void;
     /**
-     * @param {keyof IDBTransactionEventMap} type
-     * @param {(this: IDBTransaction, ev: Event) => any} listener
-     * @param {boolean | EventListenerOptions} [options]
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {void}
      */
-    removeEventListener(type: keyof IDBTransactionEventMap, listener: (this: IDBTransaction, ev: Event) => any, options?: boolean | EventListenerOptions): void;
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void;
+    /**
+     * @template {keyof IDBTransactionEventMap} K
+     * @overload
+     * @param {K} type
+     * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {void}
+     */
+    removeEventListener<K extends keyof IDBTransactionEventMap>(type: K, listener: (this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any, options?: boolean | EventListenerOptions | undefined): void;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {void}
+     */
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): void;
+    /**
+     * @param {Event} event
+     */
+    dispatchEvent(event: Event): boolean;
+    /**
+     * @template {keyof IDBTransactionEventMap} K
+     * @overload
+     * @param {K} type
+     * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    on<K extends keyof IDBTransactionEventMap>(type: K, listener: (this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    on(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @template {keyof IDBTransactionEventMap} K
+     * @overload
+     * @param {K} type
+     * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {this}
+     */
+    off<K extends keyof IDBTransactionEventMap>(type: K, listener: (this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any, options?: boolean | EventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {this}
+     */
+    off(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): this;
+    /**
+     * @template {keyof IDBTransactionEventMap} K
+     * @overload
+     * @param {K} type
+     * @param {(this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    once<K extends keyof IDBTransactionEventMap>(type: K, listener: (this: IDBTransaction, ev: IDBTransactionEventMap[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    once(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @param {string | Event} event
+     * @param {EventInit} [init]
+     */
+    emit(event: string | Event, init?: EventInit): boolean;
     abort(): void;
     /**
      * A method to explicitly commit the transaction. This is the same method
@@ -168,6 +150,30 @@ export class NiceIDBTransaction implements Transaction, Disposable {
     [Symbol.dispose](): void;
     #private;
 }
-export type Transaction = import("#types").Transaction;
-import { NiceIDBStore } from './store.js';
+export class ReadWriteTransaction extends ReadOnlyTransaction {
+    /**
+     * @override
+     * @param {string} name
+     */
+    override store(name: string): ReadWriteStore;
+}
+export class UpgradeTransaction extends ReadWriteTransaction {
+    /**
+     * @override
+     * @param {string} name
+     */
+    override store(name: string): UpgradableStore;
+}
+export function readonly(tx: IDBTransaction): ReadOnlyTransaction;
+export function readwrite(tx: IDBTransaction): ReadWriteTransaction;
+export function versionchange(tx: IDBTransaction): UpgradeTransaction;
+declare namespace _default {
+    export { readonly };
+    export { readwrite };
+    export { versionchange };
+}
+export default _default;
+import { ReadOnlyStore } from './store.js';
+import { ReadWriteStore } from './store.js';
+import { UpgradableStore } from './store.js';
 //# sourceMappingURL=tx.d.ts.map

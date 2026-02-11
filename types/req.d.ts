@@ -1,54 +1,19 @@
 /**
- * @template {EventTarget} T
- * @template [M = Record<string, Event>]
- * @template {string} [E = keyof M extends string ? keyof M : never]
- */
-export class NiceIDBEventTarget<T extends EventTarget, M = Record<string, Event>, E extends string = keyof M extends string ? keyof M : never> {
-    /**
-     * @param {T} target
-     */
-    constructor(target: T);
-    /**
-     * @param {E} event
-     * @param {(event: M[keyof M]) => void} handler
-     * @param {AddEventListenerOptions | boolean} [opts]
-     */
-    on(event: E, handler: (event: M[keyof M]) => void, opts?: AddEventListenerOptions | boolean): this;
-    /**
-     * @param {E} event
-     * @param {(event: M[keyof M]) => void} handler
-     * @param {AddEventListenerOptions | boolean} [opts]
-     */
-    off(event: E, handler: (event: M[keyof M]) => void, opts?: AddEventListenerOptions | boolean): this;
-    /**
-     * @param {E} event
-     * @param {(event: M[keyof M]) => void} handler
-     * @param {AddEventListenerOptions | boolean} [opts]
-     */
-    once(event: E, handler: (event: M[keyof M]) => void, opts?: AddEventListenerOptions | boolean): this;
-    /**
-     * @param {string | Event} event
-     * @param {EventInit} [init]
-     */
-    emit(event: string | Event, init?: EventInit): boolean;
-    #private;
-}
-/**
  * A "thenable" wrapper for `IDBRequest` objects. Use await to get the
  * underlying request's `result` property.
  *
  * @example
- * const req = new NiceIDBRequest(someIDBRequest);
+ * const req = new DBRequest(someIDBRequest);
  * const result = await req;
  * console.assert(result === someIDBRequest.result);
  *
  * @example
  * // Transform the fulfillment value with a callback as a second constructor argument.
- * const req = new NiceIDBRequest(indexedDB.open('my-db'), (result) => {
+ * const req = new DBRequest(indexedDB.open('my-db'), (result) => {
  *   console.assert(result instanceof IDBDatabase);
  *   console.info(`Sucessfully opened database ${result.name}`);
- *   // Return a NiceIDB instance as the fulfillment value.
- *   return new NiceIDB(result);
+ *   // Return a NiceIDBDatabase instance as the fulfillment value.
+ *   return new NiceIDBDatabase(result);
  * });
  *
  * // Register some event listeners...
@@ -63,7 +28,7 @@ export class NiceIDBEventTarget<T extends EventTarget, M = Record<string, Event>
  *
  * @example
  * // Attach some event listeners.
- * const req = new NiceIDBRequest(someIDBRequest).once('error', (event) => {
+ * const req = new DBRequest(someIDBRequest).once('error', (event) => {
  *   event.preventDefault()
  * });
  * const result = await req;
@@ -72,17 +37,22 @@ export class NiceIDBEventTarget<T extends EventTarget, M = Record<string, Event>
  * @template [TResolved = R['result']]
  * @template [TRejected = never]
  * @implements {PromiseLike<TResolved | TRejected>}
- * @extends {NiceIDBEventTarget<R, R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap>}
  */
-export class NiceIDBRequest<R extends IDBRequest, TResolved = R["result"], TRejected = never> extends NiceIDBEventTarget<R, R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, keyof (R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap) extends string ? string & keyof (R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap) : never> implements PromiseLike<TResolved | TRejected> {
+export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected = never> implements PromiseLike<TResolved | TRejected> {
+    /**
+     * Promisify an `IDBRequest` to await its result or reject if it errors.
+     * @template {IDBRequest} R
+     * @param {R} request
+     * @returns {DBRequest<R>} Wrapped request.
+     */
+    static promisify<R_1 extends IDBRequest>(request: R_1): DBRequest<R_1>;
     /**
      * @param {R} request - the IDBRequest to wrap.
-     * @param {(value: R['result']) => TResolved | PromiseLike<TResolved>} [onfulfilled] - Optionally transform the `result` that the request will resolve to.
-     * @param {(reason: any) => TRejected | PromiseLike<TRejected>} [onrejected]
+     * @param {((value: R['result']) => TResolved | PromiseLike<TResolved>) | undefined | null} [onfulfilled] - Optionally transform the `result` that the request will resolve to.
+     * @param {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} [onrejected]
      */
-    constructor(request: R, onfulfilled?: (value: R["result"]) => TResolved | PromiseLike<TResolved>, onrejected?: (reason: any) => TRejected | PromiseLike<TRejected>);
+    constructor(request: R, onfulfilled?: ((value: R["result"]) => TResolved | PromiseLike<TResolved>) | undefined | null, onrejected?: ((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null);
     get state(): IDBRequestReadyState;
-    get tx(): NiceIDBTransaction | null;
     /**
      * Will be `true` when the underlying request is "pending".
      */
@@ -114,7 +84,106 @@ export class NiceIDBRequest<R extends IDBRequest, TResolved = R["result"], TReje
         result: null;
         error: any;
     }>;
+    /**
+     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {keyof M} K
+     * @overload
+     * @param {K} type
+     * @param {M[K]} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    on<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: M[K], options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    on(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {keyof M} K
+     * @overload
+     * @param {K} type
+     * @param {M[K]} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {this}
+     */
+    off<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: M[K], options?: boolean | EventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {this}
+     */
+    off(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): this;
+    /**
+     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {keyof M} K
+     * @overload
+     * @param {K} type
+     * @param {M[K]} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    once<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: M[K], options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    once(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @param {Event | string} event
+     * @param {EventInit} [init]
+     */
+    emit(event: Event | string, init?: EventInit): boolean;
+    /**
+     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {keyof M} K
+     * @overload
+     * @param {K} type
+     * @param {M[K]} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {void}
+     */
+    addEventListener<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: M[K], options?: boolean | AddEventListenerOptions | undefined): void;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {void}
+     */
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void;
+    /**
+     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {keyof M} K
+     * @overload
+     * @param {K} type
+     * @param {M[K]} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {void}
+     */
+    removeEventListener<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: M[K], options?: boolean | EventListenerOptions | undefined): void;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {void}
+     */
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): void;
+    /**
+     * @param {Event} event
+     */
+    dispatchEvent(event: Event): boolean;
     #private;
 }
-import { NiceIDBTransaction } from './tx';
+export default DBRequest;
 //# sourceMappingURL=req.d.ts.map
