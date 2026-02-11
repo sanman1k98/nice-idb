@@ -1,4 +1,4 @@
-/** @import { OpenCursorOptions } from './util.js' */
+/** @import { OpenCursorOptions } from '#types' */
 import { ReadOnlyCursor, ReadOnlyKeyCursor } from './cursor';
 import { DBRequest } from './req';
 import { cursorArgs } from './util.js';

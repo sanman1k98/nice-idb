@@ -1,3 +1,4 @@
+/** @import { Constructor } from '#types' */
 import { DBRequest } from './req';
 
 /**
@@ -154,11 +155,6 @@ export class ReadWriteCursor extends ReadOnlyCursor {
 		return DBRequest.promisify(req);
 	}
 }
-
-/**
- * @template [T = {}]
- * @typedef {new (...args: any[]) => T} Constructor
- */
 
 /**
  * Methods that can only be called if the cursor is coming from an index.
