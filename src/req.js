@@ -129,7 +129,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
-	 * @param {M[K]} listener
+	 * @param {(this: R, ev: M[K]) => any} listener
 	 * @param {boolean | AddEventListenerOptions} [options]
 	 * @returns {this}
 	 */
@@ -155,7 +155,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
-	 * @param {M[K]} listener
+	 * @param {(this: R, ev: M[K]) => any} listener
 	 * @param {boolean | EventListenerOptions} [options]
 	 * @returns {this}
 	 */
@@ -181,7 +181,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
-	 * @param {M[K]} listener
+	 * @param {(this: R, ev: M[K]) => any} listener
 	 * @param {boolean | AddEventListenerOptions} [options]
 	 * @returns {this}
 	 */
@@ -223,7 +223,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
-	 * @param {M[K]} listener
+	 * @param {(this: R, ev: M[K]) => any} listener
 	 * @param {boolean | AddEventListenerOptions} [options]
 	 * @returns {void}
 	 */
@@ -249,7 +249,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
-	 * @param {M[K]} listener
+	 * @param {(this: R, ev: M[K]) => any} listener
 	 * @param {boolean | EventListenerOptions} [options]
 	 * @returns {void}
 	 */
