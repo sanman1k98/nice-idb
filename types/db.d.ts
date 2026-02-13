@@ -1,4 +1,14 @@
-export class BaseDatabase {
+declare const DatabaseWrapper_base: {
+    new (): import("#types").WrapperClass<IDBDatabase>;
+    new (target: IDBDatabase): import("#types").WrapperClass<IDBDatabase>;
+    wrap(target: objectT): import("#types").WrapperClass<object>;
+};
+export class DatabaseWrapper extends DatabaseWrapper_base {
+    /**
+     * Wrap an existing IDBDatabase instance.
+     * @override
+     */
+    static override wrap: (this: Constructor<DatabaseWrapper>, target: IDBDatabase) => DatabaseWrapper;
     /**
      * Compares two values as keys to determine equality and ordering for IndexedDB operations.
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/cmp}
@@ -15,27 +25,6 @@ export class BaseDatabase {
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/deleteDatabase}
      */
     static delete(name: string): DBRequest<IDBOpenDBRequest, IDBDatabase, never>;
-    /**
-     * @overload
-     * @param {IDBDatabase} db An IDBDatabase instance to wrap.
-     */
-    constructor(db: IDBDatabase);
-    /**
-     * @protected
-     * @overload
-     * @param {undefined} [db]
-     */
-    constructor(db?: undefined);
-    /**
-     * For subclasses to set the wrapped instance.
-     * @protected
-     */
-    protected set target(arg: IDBDatabase);
-    /**
-     * For subclasses to access the wrapped instance.
-     * @protected
-     */
-    protected get target(): IDBDatabase;
     /**
      * Name of the connected database.
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/name}
@@ -100,28 +89,52 @@ export class BaseDatabase {
      * @overload
      * @param {K} type
      * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-     * @param {boolean | AddEventListenerOptions} options
+     * @param {boolean | AddEventListenerOptions} [options]
      * @returns {this}
      */
-    on<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options: boolean | AddEventListenerOptions): this;
+    on<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    on(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): this;
     /**
      * @template {keyof IDBDatabaseEventMap} K
      * @overload
      * @param {K} type
      * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-     * @param {boolean | AddEventListenerOptions} options
+     * @param {boolean | AddEventListenerOptions} [options]
      * @returns {this}
      */
-    once<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options: boolean | AddEventListenerOptions): this;
+    once<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {this}
+     */
+    once(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): this;
     /**
      * @template {keyof IDBDatabaseEventMap} K
      * @overload
      * @param {K} type
      * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-     * @param {boolean | EventListenerOptions} options
+     * @param {boolean | EventListenerOptions} [options]
      * @returns {this}
      */
-    off<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options: boolean | EventListenerOptions): this;
+    off<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options?: boolean | EventListenerOptions | undefined): this;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {this}
+     */
+    off(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): this;
     /**
      * @param {Event | string} event
      * @param {EventInit} [init]
@@ -132,30 +145,45 @@ export class BaseDatabase {
      * @overload
      * @param {K} type
      * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-     * @param {boolean | AddEventListenerOptions} options
+     * @param {boolean | AddEventListenerOptions} [options]
      * @returns {void}
      */
-    addEventListener<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options: boolean | AddEventListenerOptions): void;
+    addEventListener<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options?: boolean | AddEventListenerOptions | undefined): void;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     * @returns {void}
+     */
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void;
     /**
      * @template {keyof IDBDatabaseEventMap} K
      * @overload
      * @param {K} type
      * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-     * @param {boolean | EventListenerOptions} options
+     * @param {boolean | EventListenerOptions} [options]
      * @returns {void}
      */
-    removeEventListener<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options: boolean | EventListenerOptions): void;
+    removeEventListener<K extends keyof IDBDatabaseEventMap>(type: K, listener: (this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any, options?: boolean | EventListenerOptions | undefined): void;
+    /**
+     * @overload
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | EventListenerOptions} [options]
+     * @returns {void}
+     */
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): void;
     /**
      * @param {Event} event
      */
     dispatchEvent(event: Event): boolean;
     [Symbol.dispose](): void;
-    #private;
 }
 /**
  * Wraps an `IDBDatabase` for the the "upgradeneeded" event handler.
  */
-export class UpgradableDatabase extends BaseDatabase {
+export class UpgradableDatabase extends DatabaseWrapper {
     /**
      * Create and return a new object store.
      * @param {string} name
@@ -173,7 +201,7 @@ export class UpgradableDatabase extends BaseDatabase {
 /**
  * Manage connections to databases and any upgrades.
  */
-export class Database extends BaseDatabase {
+export class Database extends DatabaseWrapper {
     /**
      * Create a new instance to manage a connection to a database with the given name.
      * @param {string} name
@@ -291,6 +319,7 @@ import { ReadOnlyTransaction } from './tx.js';
 import { ReadWriteTransaction } from './tx.js';
 import { ReadOnlyStore } from './store.js';
 import { ReadWriteStore } from './store.js';
+import type { Constructor } from '#types';
 import { UpgradableStore } from './store.js';
 import type { RegisterUpgrade } from '#types';
 import { UpgradeTransaction } from './tx.js';

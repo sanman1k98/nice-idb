@@ -1,14 +1,19 @@
+declare const ReadOnlyKeyCursor_base: {
+    new (): import("#types").WrapperClass<IDBRequest<any>>;
+    new (target: IDBRequest<any>): import("#types").WrapperClass<IDBRequest<any>>;
+    wrap(target: objectT): import("#types").WrapperClass<object>;
+};
 /**
  * @template {IDBCursor} [C = IDBCursor]
  * @implements {AsyncIterableIterator<ReadOnlyKeyCursor<C>, null>}
  */
-export class ReadOnlyKeyCursor<C extends IDBCursor = IDBCursor> implements AsyncIterableIterator<ReadOnlyKeyCursor<C>, null> {
+export class ReadOnlyKeyCursor<C extends IDBCursor = IDBCursor> extends ReadOnlyKeyCursor_base implements AsyncIterableIterator<ReadOnlyKeyCursor<C>, null> {
     /**
      * @param {IDBRequest<C | null>} request
      */
     constructor(request: IDBRequest<C | null>);
     /** @type {C} */
-    get target(): C;
+    get cursor(): C;
     /**
      * Will be true when the underlying request's state is "pending".
      * @type {boolean}
@@ -108,10 +113,9 @@ declare const ReadOnlyIndexKeyCursor_base: {
         continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
         "__#private@#done": boolean;
         /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
-        /** @type {IDBRequest<C | null>} @readonly */ readonly "__#private@#request": IDBRequest<any>;
         /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
         /** @type {C} */
-        get target(): any;
+        get cursor(): any;
         /**
          * Will be true when the underlying request's state is "pending".
          * @type {boolean}
@@ -187,6 +191,8 @@ declare const ReadOnlyIndexKeyCursor_base: {
         return(value?: null): Promise<IteratorReturnResult<null>>;
         [Symbol.asyncIterator](): /*elided*/ any;
         [Symbol.asyncDispose](): void;
+        get target(): IDBRequest<any>;
+        wrap(target: IDBRequest<any>): /*elided*/ any;
     };
 } & typeof ReadOnlyKeyCursor;
 export class ReadOnlyIndexKeyCursor extends ReadOnlyIndexKeyCursor_base {
@@ -206,10 +212,9 @@ declare const ReadOnlyIndexCursor_base: {
         continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
         "__#private@#done": boolean;
         /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
-        /** @type {IDBRequest<C | null>} @readonly */ readonly "__#private@#request": IDBRequest<any>;
         /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
         /** @type {C} */
-        get target(): any;
+        get cursor(): any;
         /**
          * Will be true when the underlying request's state is "pending".
          * @type {boolean}
@@ -285,6 +290,8 @@ declare const ReadOnlyIndexCursor_base: {
         return(value?: null): Promise<IteratorReturnResult<null>>;
         [Symbol.asyncIterator](): /*elided*/ any;
         [Symbol.asyncDispose](): void;
+        get target(): IDBRequest<any>;
+        wrap(target: IDBRequest<any>): /*elided*/ any;
     };
 } & typeof ReadOnlyCursor;
 export class ReadOnlyIndexCursor extends ReadOnlyIndexCursor_base {
@@ -300,10 +307,9 @@ declare const ReadWriteIndexCursor_base: {
         continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
         "__#private@#done": boolean;
         /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
-        /** @type {IDBRequest<C | null>} @readonly */ readonly "__#private@#request": IDBRequest<any>;
         /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
         /** @type {C} */
-        get target(): any;
+        get cursor(): any;
         /**
          * Will be true when the underlying request's state is "pending".
          * @type {boolean}
@@ -379,6 +385,8 @@ declare const ReadWriteIndexCursor_base: {
         return(value?: null): Promise<IteratorReturnResult<null>>;
         [Symbol.asyncIterator](): /*elided*/ any;
         [Symbol.asyncDispose](): void;
+        get target(): IDBRequest<any>;
+        wrap(target: IDBRequest<any>): /*elided*/ any;
     };
 } & typeof ReadWriteCursor;
 export class ReadWriteIndexCursor extends ReadWriteIndexCursor_base {
