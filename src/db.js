@@ -138,13 +138,20 @@ export class DatabaseWrapper extends Wrappable(IDBDatabase) {
 	 * @overload
 	 * @param {K} type
 	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-	 * @param {boolean | AddEventListenerOptions} options
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
 	 * @returns {this}
 	 */
 	/**
 	 * @param {string} type
-	 * @param {(this: IDBDatabase, ev: Event) => any} listener
-	 * @param {boolean | AddEventListenerOptions} options
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
 	 */
 	on(type, listener, options) {
 		super.target.addEventListener(type, listener, options);
@@ -156,13 +163,20 @@ export class DatabaseWrapper extends Wrappable(IDBDatabase) {
 	 * @overload
 	 * @param {K} type
 	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-	 * @param {boolean | AddEventListenerOptions} options
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
 	 * @returns {this}
 	 */
 	/**
 	 * @param {string} type
-	 * @param {(this: IDBDatabase, ev: Event) => any} listener
-	 * @param {boolean | AddEventListenerOptions} options
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
 	 */
 	once(type, listener, options) {
 		if (typeof options === 'boolean')
@@ -180,13 +194,20 @@ export class DatabaseWrapper extends Wrappable(IDBDatabase) {
 	 * @overload
 	 * @param {K} type
 	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-	 * @param {boolean | EventListenerOptions} options
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {this}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
 	 * @returns {this}
 	 */
 	/**
 	 * @param {string} type
-	 * @param {(this: IDBDatabase, ev: Event) => any} listener
-	 * @param {boolean | EventListenerOptions} options
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
 	 */
 	off(type, listener, options) {
 		super.target.removeEventListener(type, listener, options);
@@ -208,14 +229,20 @@ export class DatabaseWrapper extends Wrappable(IDBDatabase) {
 	 * @overload
 	 * @param {K} type
 	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-	 * @param {boolean | AddEventListenerOptions} options
+	 * @param {boolean | AddEventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
 	 * @returns {void}
 	 */
 	/**
 	 * @param {string} type
-	 * @param {(this: IDBDatabase, ev: Event) => any} listener
-	 * @param {boolean | AddEventListenerOptions} options
-	 * @returns {void}
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | AddEventListenerOptions} [options]
 	 */
 	addEventListener(type, listener, options) {
 		return super.target.addEventListener(type, listener, options);
@@ -226,14 +253,20 @@ export class DatabaseWrapper extends Wrappable(IDBDatabase) {
 	 * @overload
 	 * @param {K} type
 	 * @param {(this: IDBDatabase, ev: IDBDatabaseEventMap[K]) => any} listener
-	 * @param {boolean | EventListenerOptions} options
+	 * @param {boolean | EventListenerOptions} [options]
+	 * @returns {void}
+	 */
+	/**
+	 * @overload
+	 * @param {string} type
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
 	 * @returns {void}
 	 */
 	/**
 	 * @param {string} type
-	 * @param {(this: IDBDatabase, ev: Event) => any} listener
-	 * @param {boolean | EventListenerOptions} options
-	 * @returns {void}
+	 * @param {EventListenerOrEventListenerObject} listener
+	 * @param {boolean | EventListenerOptions} [options]
 	 */
 	removeEventListener(type, listener, options) {
 		return super.target.removeEventListener(type, listener, options);
