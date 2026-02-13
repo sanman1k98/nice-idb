@@ -1,15 +1,18 @@
-/** @import { OpenCursorOptions } from './util.js' */
+/** @import { OpenCursorOptions } from '#types' */
 import { IndexCursor } from './cursor.js';
-import { ReadOnlySource } from './source.js';
+import { createModeGuardedWrap, Readable } from './source.js';
 import { cursorArgs } from './util.js';
 
-/**
- * @extends {ReadOnlySource<IDBIndex>}
- */
-export class ReadOnlyIndex extends ReadOnlySource {
+export class ReadOnlyIndex extends Readable(IDBIndex) {
 	get multiEntry() { return super.target.multiEntry; }
 
 	get unique() { return super.target.unique; }
+
+	/**
+	 * Wrap an existing IDBIndex instance.
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
 
 	/**
 	 * @override
@@ -35,6 +38,17 @@ export class ReadOnlyIndex extends ReadOnlySource {
 export class ReadWriteIndex extends ReadOnlyIndex {
 	/**
 	 * @override
+	 * @type {IDBTransactionMode}
+	 */
+	static mode = 'readwrite';
+
+	/**
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
+
+	/**
+	 * @override
 	 * @param {OpenCursorOptions} [opts]
 	 */
 	cursor(opts) {
@@ -44,8 +58,8 @@ export class ReadWriteIndex extends ReadOnlyIndex {
 	}
 }
 
-export const readonly = (/** @type {IDBIndex} */ idx) => new ReadOnlyIndex(idx);
-export const readwrite = (/** @type {IDBIndex} */ idx) => new ReadWriteIndex(idx);
+export const readonly = ReadOnlyIndex.wrap;
+export const readwrite = ReadWriteIndex.wrap;
 export { readwrite as versionchange };
 
 export default { readonly, readwrite, versionchange: readwrite };

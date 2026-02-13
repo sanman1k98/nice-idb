@@ -1,51 +1,51 @@
 /** @import { Constructor } from '#types' */
 import { DBRequest } from './req';
+import { Wrappable } from './wrap';
 
 /**
  * @template {IDBCursor} [C = IDBCursor]
  * @implements {AsyncIterableIterator<ReadOnlyKeyCursor<C>, null>}
  */
-export class ReadOnlyKeyCursor {
+export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	#done = false;
 
 	/** @type {PromiseWithResolvers<C | null> | undefined} */ #pending;
-	/** @type {IDBRequest<C | null>} @readonly */ #request;
 	/** @type {IDBValidKey | undefined} */ #prevIterKey;
 
 	/** @type {C} */
-	get target() {
-		if (!this.#request.result)
+	get cursor() {
+		if (!super.target.result)
 			throw new TypeError('NullCursor');
-		return this.#request.result;
+		return super.target.result;
 	}
 
 	/**
 	 * Will be true when the underlying request's state is "pending".
 	 * @type {boolean}
 	 */
-	get pending() { return this.#request.readyState === 'pending'; }
+	get pending() { return super.target.readyState === 'pending'; }
 
 	/**
 	 * Can be used as the condition for a while-loop.
 	 */
 	get done() {
 		return this.#done
-			||= !this.pending && !this.#request.result;
+			||= !this.pending && !super.target.result;
 	}
 
-	get dir() { return this.target.direction; }
+	get dir() { return this.cursor.direction; }
 
-	get key() { return this.target.key; }
+	get key() { return this.cursor.key; }
 
-	get primaryKey() { return this.target.primaryKey; }
+	get primaryKey() { return this.cursor.primaryKey; }
 
 	/**
 	 * @param {IDBRequest<C | null>} request
 	 */
 	constructor(request) {
+		super(request);
 		request.addEventListener('success', this);
 		request.addEventListener('error', this);
-		this.#request = request;
 	}
 
 	/** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
@@ -58,8 +58,8 @@ export class ReadOnlyKeyCursor {
 	#cleanup() {
 		if (this.#done)
 			return;
-		this.#request.removeEventListener('success', this);
-		this.#request.removeEventListener('error', this);
+		super.target.removeEventListener('success', this);
+		super.target.removeEventListener('error', this);
 		this.#pending = undefined;
 		this.#done = true;
 	}
@@ -89,7 +89,7 @@ export class ReadOnlyKeyCursor {
 	 * @param {number} count
 	 */
 	advance(count) {
-		this.target.advance(count);
+		this.cursor.advance(count);
 		return this._iteration.then(() => this);
 	}
 
@@ -114,7 +114,7 @@ export class ReadOnlyKeyCursor {
 	 * @param {IDBValidKey} [key]
 	 */
 	continue(key) {
-		this.target.continue(key);
+		this.cursor.continue(key);
 		return this._iteration.then(() => this);
 	}
 
@@ -140,7 +140,7 @@ export class ReadOnlyKeyCursor {
 		if (this.#done)
 			return { value: null, done: true };
 		else if (!this.pending)
-			this.target.continue();
+			this.cursor.continue();
 
 		return this._iteration.then((cursor) => {
 			return !cursor
@@ -166,12 +166,12 @@ export class ReadOnlyKeyCursor {
  * @extends {ReadOnlyKeyCursor<IDBCursorWithValue>}
  */
 export class ReadOnlyCursor extends ReadOnlyKeyCursor {
-	get value() { return super.target.value; }
+	get value() { return super.cursor.value; }
 }
 
 export class ReadWriteCursor extends ReadOnlyCursor {
 	delete() {
-		const req = super.target.delete();
+		const req = super.cursor.delete();
 		return DBRequest.promisify(req);
 	}
 
@@ -179,7 +179,7 @@ export class ReadWriteCursor extends ReadOnlyCursor {
 	 * @param {any} value
 	 */
 	update(value) {
-		const req = super.target.update(value);
+		const req = super.cursor.update(value);
 		return DBRequest.promisify(req);
 	}
 }
@@ -197,7 +197,7 @@ function IndexOnly(Base) {
 		 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
 		 */
 		continuePrimaryKey(key, primaryKey) {
-			super.target.continuePrimaryKey(key, primaryKey);
+			super.cursor.continuePrimaryKey(key, primaryKey);
 			return super._iteration.then(() => this);
 		}
 	};

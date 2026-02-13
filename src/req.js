@@ -1,3 +1,5 @@
+import { Wrappable } from './wrap';
+
 /**
  * A "thenable" wrapper for `IDBRequest` objects. Use await to get the
  * underlying request's `result` property.
@@ -38,19 +40,17 @@
  * @template [TRejected = never]
  * @implements {PromiseLike<TResolved | TRejected>}
  */
-export class DBRequest {
-	/** @type {IDBRequest} @readonly */ #target;
-
+export class DBRequest extends Wrappable(IDBRequest) {
 	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
 	/** @type {((value: R['result']) => TResolved | PromiseLike<TResolved>) | undefined | null} @readonly */ #onfulfilled;
 	/** @type {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} @readonly */ #onrejected;
 
-	get state() { return this.#target.readyState; }
+	get state() { return super.target.readyState; }
 
 	/**
 	 * Will be `true` when the underlying request is "pending".
 	 */
-	get pending() { return this.#target.readyState === 'pending'; }
+	get pending() { return super.target.readyState === 'pending'; }
 
 	/**
 	 * Another way to resolve the `result` of the underlying request.
@@ -67,7 +67,7 @@ export class DBRequest {
 	 * @param {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} [onrejected]
 	 */
 	constructor(request, onfulfilled, onrejected) {
-		this.#target = request;
+		super(request);
 		this.#onfulfilled = onfulfilled;
 		this.#onrejected = onrejected;
 	}
@@ -84,24 +84,24 @@ export class DBRequest {
 				.then(onfulfilled, onrejected);
 		}
 
-		if (this.pending || this.#target instanceof IDBOpenDBRequest) {
+		if (this.pending || super.target instanceof IDBOpenDBRequest) {
 			this.#result = new Promise((resolve, reject) => {
 				/** @type {EventListener} */
 				const listener = (event) => {
-					this.#target.removeEventListener('success', listener);
-					this.#target.removeEventListener('error', listener);
-					const { result, error } = this.#target;
+					super.target.removeEventListener('success', listener);
+					super.target.removeEventListener('error', listener);
+					const { result, error } = super.target;
 					return event.type === 'success' ? resolve(result) : reject(error);
 				};
 				const opts = { once: true };
-				this.#target.addEventListener('success', listener, opts);
-				this.#target.addEventListener('error', listener, opts);
+				super.target.addEventListener('success', listener, opts);
+				super.target.addEventListener('error', listener, opts);
 			}).then(this.#onfulfilled, this.#onrejected);
 		} else {
 			this.#result = new Promise((resolve, reject) =>
-				this.#target.error
-					? reject(this.#target.error)
-					: resolve(this.#target.result),
+				super.target.error
+					? reject(super.target.error)
+					: resolve(super.target.result),
 			).then(this.#onfulfilled, this.#onrejected);
 		}
 
@@ -146,7 +146,7 @@ export class DBRequest {
 	 * @param {boolean | AddEventListenerOptions} [options]
 	 */
 	on(type, listener, options) {
-		this.#target.addEventListener(type, listener, options);
+		super.target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -172,7 +172,7 @@ export class DBRequest {
 	 * @param {boolean | EventListenerOptions} [options]
 	 */
 	off(type, listener, options) {
-		this.#target.removeEventListener(type, listener, options);
+		super.target.removeEventListener(type, listener, options);
 		return this;
 	}
 
@@ -204,7 +204,7 @@ export class DBRequest {
 			Object.assign(options, { once: true });
 		else if ((options ?? null) === null)
 			options = { once: true };
-		this.#target.addEventListener(type, listener, options);
+		super.target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -214,8 +214,8 @@ export class DBRequest {
 	 */
 	emit(event, init) {
 		if (event instanceof Event)
-			return this.#target.dispatchEvent(event);
-		return this.#target.dispatchEvent(new Event(event, init));
+			return super.target.dispatchEvent(event);
+		return super.target.dispatchEvent(new Event(event, init));
 	}
 
 	/**
@@ -241,7 +241,7 @@ export class DBRequest {
 	 * @returns {void}
 	 */
 	addEventListener(type, listener, options) {
-		return this.#target.addEventListener(type, listener, options);
+		return super.target.addEventListener(type, listener, options);
 	}
 
 	/**
@@ -267,14 +267,14 @@ export class DBRequest {
 	 * @returns {void}
 	 */
 	removeEventListener(type, listener, options) {
-		return this.#target.removeEventListener(type, listener, options);
+		return super.target.removeEventListener(type, listener, options);
 	};
 
 	/**
 	 * @param {Event} event
 	 */
 	dispatchEvent(event) {
-		return this.#target.dispatchEvent(event);
+		return super.target.dispatchEvent(event);
 	}
 
 	/**

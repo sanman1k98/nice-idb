@@ -1,19 +1,36 @@
+/** @import { Constructor, WrapperClass } from '#types' */
 import { ReadOnlyStore, ReadWriteStore, UpgradableStore } from './store.js';
 import { toStrings } from './util.js';
+import { Wrappable } from './wrap.js';
+
+/**
+ * @template {WrapperClass<IDBTransaction>} C
+ * @template {C extends WrapperClass<infer U> ? U : never} T
+ * @param {Constructor<C> & { mode: IDBTransactionMode }} Class
+ */
+export function createModeGuardedWrap(Class) {
+	return function (/** @type {T} */ target) {
+		if (target.mode !== Class.mode)
+			throw new Error('InvalidMode');
+		return new Class(target);
+	};
+}
 
 /**
  * @implements {Disposable}
  */
-export class ReadOnlyTransaction {
-	/** @type {IDBTransaction} @readonly */ #target;
+export class ReadOnlyTransaction extends Wrappable(IDBTransaction) {
+	/**
+	 * @type {IDBTransactionMode}
+	 */
+	static mode = 'readonly';
+
 	/** @type {Promise<Event>} @readonly */ #finish;
 	/** @type {Event | undefined} */ #event;
 
-	get target() { return this.#target; }
-
-	get error() { return this.#target.error; }
-	get durability() { return this.#target.durability; }
-	get mode() { return this.#target.mode; }
+	get error() { return super.target.error; }
+	get durability() { return super.target.durability; }
+	get mode() { return super.target.mode; }
 
 	/**
 	 * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
@@ -31,13 +48,13 @@ export class ReadOnlyTransaction {
 	 * List of stores in the scope of this transaction.
 	 * @see {@link IDBTransaction.prototype.objectStoreNames}
 	 */
-	get storeNames() { return toStrings(this.#target.objectStoreNames); }
+	get storeNames() { return toStrings(super.target.objectStoreNames); }
 
 	/**
 	 * @param {IDBTransaction} tx - The transaction instance to wrap.
 	 */
 	constructor(tx) {
-		this.#target = tx;
+		super(tx);
 
 		this.#finish = new Promise((resolve) => {
 			/** @satisfies {EventListener} */
@@ -53,11 +70,17 @@ export class ReadOnlyTransaction {
 	}
 
 	/**
+	 * Wrap an existing IDBTransaction instance.
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
+
+	/**
 	 * Get an object store within the transaction's scope.
 	 * @param {string} name
 	 */
 	store(name) {
-		const store = this.#target.objectStore(name);
+		const store = super.target.objectStore(name);
 		return new ReadOnlyStore(store);
 	}
 
@@ -83,7 +106,7 @@ export class ReadOnlyTransaction {
 	 * @returns {void}
 	 */
 	addEventListener(type, listener, options) {
-		return this.#target.addEventListener(type, listener, options);
+		return super.target.addEventListener(type, listener, options);
 	}
 
 	/**
@@ -107,14 +130,14 @@ export class ReadOnlyTransaction {
 	 * @param {boolean | EventListenerOptions} [options]
 	 */
 	removeEventListener(type, listener, options) {
-		return this.#target.removeEventListener(type, listener, options);
+		return super.target.removeEventListener(type, listener, options);
 	}
 
 	/**
 	 * @param {Event} event
 	 */
 	dispatchEvent(event) {
-		return this.#target.dispatchEvent(event);
+		return super.target.dispatchEvent(event);
 	}
 
 	/**
@@ -138,7 +161,7 @@ export class ReadOnlyTransaction {
 	 * @param {boolean | AddEventListenerOptions} [options]
 	 */
 	on(type, listener, options) {
-		this.#target.addEventListener(type, listener, options);
+		super.target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -163,7 +186,7 @@ export class ReadOnlyTransaction {
 	 * @param {boolean | EventListenerOptions} [options]
 	 */
 	off(type, listener, options) {
-		this.#target.removeEventListener(type, listener, options);
+		super.target.removeEventListener(type, listener, options);
 		return this;
 	}
 
@@ -194,7 +217,7 @@ export class ReadOnlyTransaction {
 			Object.assign(options, { once: true });
 		else if ((options ?? null) === null)
 			options = { once: true };
-		this.#target.addEventListener(type, listener, options);
+		super.target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -204,12 +227,12 @@ export class ReadOnlyTransaction {
 	 */
 	emit(event, init) {
 		if (typeof event === 'string')
-			return this.#target.dispatchEvent(new Event(event, init));
-		return this.#target.dispatchEvent(event);
+			return super.target.dispatchEvent(new Event(event, init));
+		return super.target.dispatchEvent(event);
 	}
 
 	abort() {
-		this.#target.abort();
+		super.target.abort();
 	}
 
 	/**
@@ -229,15 +252,26 @@ export class ReadOnlyTransaction {
 	 * ```
 	 */
 	commit() {
-		this.#target.commit();
+		super.target.commit();
 	}
 
 	[Symbol.dispose]() {
-		this.#target.commit();
+		super.target.commit();
 	}
 }
 
 export class ReadWriteTransaction extends ReadOnlyTransaction {
+	/**
+	 * @override
+	 * @type {IDBTransactionMode}
+	 */
+	static mode = 'readwrite';
+
+	/**
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
+
 	/**
 	 * @override
 	 * @param {string} name
@@ -251,6 +285,17 @@ export class ReadWriteTransaction extends ReadOnlyTransaction {
 export class UpgradeTransaction extends ReadWriteTransaction {
 	/**
 	 * @override
+	 * @type {IDBTransactionMode}
+	 */
+	static mode = 'versionchange';
+
+	/**
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
+
+	/**
+	 * @override
 	 * @param {string} name
 	 */
 	store(name) {
@@ -259,8 +304,8 @@ export class UpgradeTransaction extends ReadWriteTransaction {
 	}
 }
 
-export const readonly = (/** @type {IDBTransaction} */ tx) => new ReadOnlyTransaction(tx);
-export const readwrite = (/** @type {IDBTransaction} */ tx) => new ReadWriteTransaction(tx);
-export const versionchange = (/** @type {IDBTransaction} */ tx) => new UpgradeTransaction(tx);
+const readonly = ReadOnlyTransaction.wrap;
+const readwrite = ReadWriteTransaction.wrap;
+const versionchange = UpgradeTransaction.wrap;
 
 export default { readonly, readwrite, versionchange };

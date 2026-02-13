@@ -14,8 +14,6 @@ import type {
 	ReadWriteIndex,
 } from './idx.js';
 
-import type { RedirectableProxy } from './proxy.js';
-
 import type {
 	ReadOnlyStore,
 	ReadWriteStore,
@@ -27,6 +25,8 @@ import type {
 	ReadWriteTransaction,
 	UpgradeTransaction,
 } from './tx.js';
+
+import type { VirtualInstance, Wrappable } from './wrap.js';
 
 export namespace Cursor {
 	export type {
@@ -72,6 +72,33 @@ export interface Constructor<T = {}> {
 	new (...args: any[]): T;
 };
 
+/**
+ * Workaround for adding protected members to mixins.
+ * Used for typecasting return type of {@link Wrappable}.
+ */
+export class WrapperClass<T extends object> {
+	/**
+	 * Create an empty wrapper.
+	 */
+	constructor(): WrapperClass<T>;
+	/**
+	 * Check the given target's type and wrap.
+	 */
+	constructor(target: T): WrapperClass<T>;
+	/**
+	 * Used by subclasses to access the wrapped object.
+	 */
+	get target(): T;
+	/**
+	 * Used from within subclasses set the wrapped object.
+	 */
+	wrap(target: T): this;
+	/**
+	 * Create a wrapper for the given target.
+	 */
+	static wrap(target: objectT): WrapperClass<object>;
+}
+
 export interface UpgradeCallback {
 	(evt: IDBVersionChangeEvent): void | Promise<void>;
 };
@@ -81,8 +108,8 @@ export interface RegisterUpgrade {
 };
 
 export interface UpgradeState {
-	db: RedirectableProxy<UpgradableDatabase>;
-	tx: RedirectableProxy<UpgradeTransaction>;
+	db: VirtualInstance<UpgradableDatabase>;
+	tx: VirtualInstance<UpgradeTransaction>;
 	upgrades: Map<number, UpgradeCallback>;
 	latest: number;
 }

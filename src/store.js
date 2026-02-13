@@ -1,17 +1,20 @@
-/** @import { OpenCursorOptions } from './util.js' */
+/** @import { OpenCursorOptions } from '#types' */
 import { ReadWriteCursor } from './cursor.js';
 import { ReadOnlyIndex, ReadWriteIndex } from './idx.js';
 import { DBRequest } from './req.js';
-import { ReadOnlySource } from './source.js';
+import { createModeGuardedWrap, Readable } from './source.js';
 import { cursorArgs, toStrings } from './util.js';
 
-/**
- * @extends {ReadOnlySource<IDBObjectStore>}
- */
-export class ReadOnlyStore extends ReadOnlySource {
+export class ReadOnlyStore extends Readable(IDBObjectStore) {
 	get autoIncrement() { return super.target.autoIncrement; }
 
 	get indexNames() { return toStrings(super.target.indexNames); }
+
+	/**
+	 * Wrap an exising IDBObjectStore instance.
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
 
 	/**
 	 * @param {string} name
@@ -23,6 +26,17 @@ export class ReadOnlyStore extends ReadOnlySource {
 }
 
 export class ReadWriteStore extends ReadOnlyStore {
+	/**
+	 * @override
+	 * @type {IDBTransactionMode}
+	 */
+	static mode = 'readwrite';
+
+	/**
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
+
 	/**
 	 * @param {any} value
 	 * @param {IDBValidKey | undefined} [key]
@@ -76,6 +90,17 @@ export class ReadWriteStore extends ReadOnlyStore {
 
 export class UpgradableStore extends ReadWriteStore {
 	/**
+	 * @override
+	 * @type {IDBTransactionMode}
+	 */
+	static mode = 'versionchange';
+
+	/**
+	 * @override
+	 */
+	static wrap = createModeGuardedWrap(this);
+
+	/**
 	 * @param {string} name
 	 * @param {string | string[]} keyPath
 	 * @param {IDBIndexParameters | undefined} [options]
@@ -93,8 +118,8 @@ export class UpgradableStore extends ReadWriteStore {
 	}
 }
 
-export const readonly = (/** @type {IDBObjectStore} */ store) => new ReadOnlyStore(store);
-export const readwrite = (/** @type {IDBObjectStore} */ store) => new ReadWriteStore(store);
-export const versionchange = (/** @type {IDBObjectStore} */ store) => new UpgradableStore(store);
+export const readonly = ReadOnlyStore.wrap;
+export const readwrite = ReadWriteStore.wrap;
+export const versionchange = UpgradableStore.wrap;
 
 export default { readonly, readwrite, versionchange };

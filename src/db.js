@@ -1,32 +1,26 @@
-/** @import { RegisterUpgrade, UpgradeCallback, UpgradeState } from '#types' */
-import { RedirectableProxy } from './proxy.js';
+/** @import { Constructor, RegisterUpgrade, UpgradeCallback, UpgradeState } from '#types' */
 import { DBRequest } from './req.js';
 import { ReadOnlyStore, ReadWriteStore, UpgradableStore } from './store.js';
 import { ReadOnlyTransaction, ReadWriteTransaction, UpgradeTransaction } from './tx.js';
 import { toStrings } from './util.js';
+import { VirtualInstance, Wrappable } from './wrap.js';
 
-export class BaseDatabase {
-	/** @type {IDBDatabase | undefined} */ #target;
+/**
+ * @param {Constructor<DatabaseWrapper>} Class
+ */
+function createWrapFunc(Class) {
+	/** @this {Constructor<DatabaseWrapper>} @param {IDBDatabase} target */
+	return function (target) {
+		return new Class(target);
+	};
+}
 
+export class DatabaseWrapper extends Wrappable(IDBDatabase) {
 	/**
-	 * For subclasses to access the wrapped instance.
-	 * @protected
+	 * Wrap an existing IDBDatabase instance.
+	 * @override
 	 */
-	get target() {
-		if (!this.#target)
-			throw new Error('InvalidState');
-		return this.#target;
-	}
-
-	/**
-	 * For subclasses to set the wrapped instance.
-	 * @protected
-	 */
-	set target(arg) {
-		if (arg instanceof IDBDatabase === false)
-			throw new TypeError('Expected an IDBDatabase instance');
-		this.#target = arg;
-	}
+	static wrap = createWrapFunc(this);
 
 	/**
 	 * Name of the connected database.
@@ -45,22 +39,6 @@ export class BaseDatabase {
 	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/objectStoreNames}
 	 */
 	get storeNames() { return toStrings(this.target.objectStoreNames); }
-
-	/**
-	 * @overload
-	 * @param {IDBDatabase} db An IDBDatabase instance to wrap.
-	 */
-	/**
-	 * @protected
-	 * @overload
-	 * @param {undefined} [db]
-	 */
-	/**
-	 * @param {IDBDatabase | undefined} arg
-	 */
-	constructor(arg) {
-		this.#target = arg;
-	}
 
 	/**
 	 * Compares two values as keys to determine equality and ordering for IndexedDB operations.
@@ -89,16 +67,15 @@ export class BaseDatabase {
 	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/deleteDatabase}
 	 */
 	delete() {
-		if (this.#target)
-			this.#target.close();
-		return BaseDatabase.delete(this.name);
+		super.target.close();
+		return DatabaseWrapper.delete(this.name);
 	}
 
 	/**
 	 * Close the database.
 	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/close}
 	 */
-	close() { this.target.close(); }
+	close() { super.target.close(); }
 	[Symbol.dispose]() { this.close(); }
 
 	/**
@@ -122,7 +99,7 @@ export class BaseDatabase {
 	 * @param {IDBTransactionOptions | undefined} [opts]
 	 */
 	transaction(stores, mode, opts) {
-		const tx = this.target.transaction(stores, mode, opts);
+		const tx = super.target.transaction(stores, mode, opts);
 		if (mode === 'readwrite')
 			return new ReadWriteTransaction(tx);
 		return new ReadOnlyTransaction(tx);
@@ -149,7 +126,7 @@ export class BaseDatabase {
 	 * @param {IDBTransactionOptions} [opts]
 	 */
 	store(name, mode, opts) {
-		const tx = this.target.transaction(name, mode, opts);
+		const tx = super.target.transaction(name, mode, opts);
 		const store = tx.objectStore(name);
 		if (mode === 'readwrite')
 			return new ReadWriteStore(store);
@@ -170,7 +147,7 @@ export class BaseDatabase {
 	 * @param {boolean | AddEventListenerOptions} options
 	 */
 	on(type, listener, options) {
-		this.target.addEventListener(type, listener, options);
+		super.target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -194,7 +171,7 @@ export class BaseDatabase {
 			Object.assign(options, { once: true });
 		else if ((options ?? null) === null)
 			options = { once: true };
-		this.target.addEventListener(type, listener, options);
+		super.target.addEventListener(type, listener, options);
 		return this;
 	}
 
@@ -212,7 +189,7 @@ export class BaseDatabase {
 	 * @param {boolean | EventListenerOptions} options
 	 */
 	off(type, listener, options) {
-		this.target.removeEventListener(type, listener, options);
+		super.target.removeEventListener(type, listener, options);
 		return this;
 	}
 
@@ -222,8 +199,8 @@ export class BaseDatabase {
 	 */
 	emit(event, init) {
 		if (event instanceof Event)
-			return this.target.dispatchEvent(event);
-		return this.target.dispatchEvent(new Event(event, init));
+			return super.target.dispatchEvent(event);
+		return super.target.dispatchEvent(new Event(event, init));
 	}
 
 	/**
@@ -241,7 +218,7 @@ export class BaseDatabase {
 	 * @returns {void}
 	 */
 	addEventListener(type, listener, options) {
-		return this.target.addEventListener(type, listener, options);
+		return super.target.addEventListener(type, listener, options);
 	}
 
 	/**
@@ -259,21 +236,27 @@ export class BaseDatabase {
 	 * @returns {void}
 	 */
 	removeEventListener(type, listener, options) {
-		return this.target.removeEventListener(type, listener, options);
+		return super.target.removeEventListener(type, listener, options);
 	}
 
 	/**
 	 * @param {Event} event
 	 */
 	dispatchEvent(event) {
-		return this.target.dispatchEvent(event);
+		return super.target.dispatchEvent(event);
 	}
 }
 
 /**
  * Wraps an `IDBDatabase` for the the "upgradeneeded" event handler.
  */
-export class UpgradableDatabase extends BaseDatabase {
+export class UpgradableDatabase extends DatabaseWrapper {
+	/**
+	 * Wrap an IDBDatabase instance for making changes to the database structure.
+	 * @override
+	 */
+	static wrap = createWrapFunc(this);
+
 	/**
 	 * Create and return a new object store.
 	 * @param {string} name
@@ -391,7 +374,7 @@ class Upgrader {
 /**
  * Manage connections to databases and any upgrades.
  */
-export class Database extends BaseDatabase {
+export class Database extends DatabaseWrapper {
 	/** @type {IDBOpenDBRequest | undefined} */ #request;
 	/** @type {UpgradeState | undefined} */ #state;
 	/** @type {number | undefined} */ #version;
@@ -409,10 +392,19 @@ export class Database extends BaseDatabase {
 	 * @param {string} name
 	 */
 	constructor(name) {
-		super();
 		if (typeof name !== 'string')
 			throw new TypeError('Expected a string');
+		super();
 		this.#name = name;
+	}
+
+	/**
+	 * Wrap an existing database.
+	 * @param {IDBDatabase} db
+	 * @override
+	 */
+	static wrap(db) {
+		return new DatabaseWrapper(db);
 	}
 
 	/**
@@ -468,10 +460,8 @@ export class Database extends BaseDatabase {
 			upgrades.set(version, upgrade);
 		};
 
-		/** @type {RedirectableProxy<UpgradableDatabase>} */
-		const db = new RedirectableProxy();
-		/** @type {RedirectableProxy<UpgradeTransaction>} */
-		const tx = new RedirectableProxy();
+		const db = VirtualInstance.defer(UpgradableDatabase);
+		const tx = VirtualInstance.defer(UpgradeTransaction);
 
 		// Collect all upgrades.
 		versions(register, db.proxy, tx.proxy);
@@ -549,7 +539,7 @@ export class Database extends BaseDatabase {
 			throw new Error('DatabaseAlreadyConnected');
 		this.#request = indexedDB.open(this.#name, version);
 		return new DBRequest(this.#request, (result) => {
-			return (super.target = result, this);
+			return super.wrap(result);
 		});
 	}
 
@@ -564,8 +554,8 @@ export class Database extends BaseDatabase {
 			throw new Error('InvalidState');
 		const tx = new UpgradeTransaction(target.transaction);
 		const db = new UpgradableDatabase(target.result);
-		this.#state.db.target(db);
-		this.#state.tx.target(tx);
+		this.#state.db.update(db);
+		this.#state.tx.update(tx);
 	}
 
 	/**
@@ -639,7 +629,7 @@ export class Database extends BaseDatabase {
 		this.#state = undefined;
 
 		return new DBRequest(this.#request, (result) => {
-			return (super.target = result, this);
+			return super.wrap(result);
 		});
 	}
 }
