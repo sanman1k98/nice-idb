@@ -8,7 +8,7 @@ declare const ReadOnlyStore_base: {
         getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
         getKey(key: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
         cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor<IDBCursor>;
+        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
         [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
         get target(): IDBObjectStore;
         wrap(target: IDBObjectStore): /*elided*/ any;
@@ -22,7 +22,7 @@ declare const ReadOnlyStore_base: {
         getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
         getKey(key: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
         cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor<IDBCursor>;
+        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
         [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
         get target(): IDBObjectStore;
         wrap(target: IDBObjectStore): /*elided*/ any;

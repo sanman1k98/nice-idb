@@ -44,7 +44,7 @@ export function Readable<T extends IDBIndex | IDBObjectStore>(Source: Constructo
         /**
          * @param {OpenCursorOptions | undefined} [opts]
          */
-        keyCursor(opts?: OpenCursorOptions | undefined): ReadOnlyKeyCursor<IDBCursor>;
+        keyCursor(opts?: OpenCursorOptions | undefined): ReadOnlyKeyCursor;
         [Symbol.asyncIterator](): ReadOnlyCursor;
         get target(): T;
         wrap(target: T): /*elided*/ any;
@@ -81,7 +81,7 @@ export function Readable<T extends IDBIndex | IDBObjectStore>(Source: Constructo
         /**
          * @param {OpenCursorOptions | undefined} [opts]
          */
-        keyCursor(opts?: OpenCursorOptions | undefined): ReadOnlyKeyCursor<IDBCursor>;
+        keyCursor(opts?: OpenCursorOptions | undefined): ReadOnlyKeyCursor;
         [Symbol.asyncIterator](): ReadOnlyCursor;
         get target(): T;
         wrap(target: T): /*elided*/ any;

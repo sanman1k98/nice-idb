@@ -8,7 +8,7 @@ declare const ReadOnlyIndex_base: {
         getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): import("./req.js").DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
         getKey(key: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
         cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor<IDBCursor>;
+        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
         [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
         get target(): IDBIndex;
         wrap(target: IDBIndex): /*elided*/ any;
@@ -22,7 +22,7 @@ declare const ReadOnlyIndex_base: {
         getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): import("./req.js").DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
         getKey(key: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
         cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor<IDBCursor>;
+        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
         [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
         get target(): IDBIndex;
         wrap(target: IDBIndex): /*elided*/ any;
@@ -42,12 +42,12 @@ export class ReadOnlyIndex extends ReadOnlyIndex_base {
      * @override
      * @param {OpenCursorOptions} [opts]
      */
-    override cursor(opts?: OpenCursorOptions): import("./cursor.js").ReadOnlyIndexCursor;
+    override cursor(opts?: OpenCursorOptions): ReadOnlyIndexCursor;
     /**
      * @override
      * @param {OpenCursorOptions} [opts]
      */
-    override keyCursor(opts?: OpenCursorOptions): import("./cursor.js").ReadOnlyIndexKeyCursor;
+    override keyCursor(opts?: OpenCursorOptions): ReadOnlyIndexKeyCursor;
 }
 export class ReadWriteIndex extends ReadOnlyIndex {
     /**
@@ -58,7 +58,7 @@ export class ReadWriteIndex extends ReadOnlyIndex {
      * @override
      * @param {OpenCursorOptions} [opts]
      */
-    override cursor(opts?: OpenCursorOptions): import("./cursor.js").ReadWriteIndexCursor;
+    override cursor(opts?: OpenCursorOptions): ReadWriteIndexCursor;
 }
 export const readonly: (target: IDBIndex) => ReadOnlyIndex;
 export const readwrite: (target: IDBIndex) => ReadWriteIndex;
@@ -70,4 +70,7 @@ declare namespace _default {
 }
 export default _default;
 import type { OpenCursorOptions } from '#types';
+import { ReadOnlyIndexCursor } from './cursor.js';
+import { ReadOnlyIndexKeyCursor } from './cursor.js';
+import { ReadWriteIndexCursor } from './cursor.js';
 //# sourceMappingURL=idx.d.ts.map

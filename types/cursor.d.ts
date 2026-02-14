@@ -1,19 +1,24 @@
 declare const ReadOnlyKeyCursor_base: {
-    new (): import("#types").WrapperClass<IDBRequest<any>>;
-    new (target: IDBRequest<any>): import("#types").WrapperClass<IDBRequest<any>>;
-    wrap(target: objectT): import("#types").WrapperClass<object>;
+    new (): import("./types").WrapperClass<IDBRequest<any>>;
+    new (target: IDBRequest<any>): import("./types").WrapperClass<IDBRequest<any>>;
+    wrap(target: objectT): import("./types").WrapperClass<object>;
 };
 /**
- * @template {IDBCursor} [C = IDBCursor]
- * @implements {AsyncIterableIterator<ReadOnlyKeyCursor<C>, null>}
+ * @implements {AsyncIterableIterator<ReadOnlyKeyCursor, null>}
  */
-export class ReadOnlyKeyCursor<C extends IDBCursor = IDBCursor> extends ReadOnlyKeyCursor_base implements AsyncIterableIterator<ReadOnlyKeyCursor<C>, null> {
+export class ReadOnlyKeyCursor extends ReadOnlyKeyCursor_base implements AsyncIterableIterator<ReadOnlyKeyCursor, null> {
     /**
-     * @param {IDBRequest<C | null>} request
+     * @overload
+     * @param {IDBRequest<IDBCursor | null>} request
      */
-    constructor(request: IDBRequest<C | null>);
-    /** @type {C} */
-    get cursor(): C;
+    constructor(request: IDBRequest<IDBCursor | null>);
+    /**
+     * @overload
+     * @param {IDBRequest<IDBCursorWithValue | null>} request
+     */
+    constructor(request: IDBRequest<IDBCursorWithValue | null>);
+    /** @type {IDBCursor} */
+    get _cursor(): IDBCursor;
     /**
      * Will be true when the underlying request's state is "pending".
      * @type {boolean}
@@ -28,16 +33,16 @@ export class ReadOnlyKeyCursor<C extends IDBCursor = IDBCursor> extends ReadOnly
     get primaryKey(): IDBValidKey;
     /**
      * @internal
-     * @param {Event & { target: IDBRequest<C | null> }} event
+     * @param {Event & { target: IDBRequest<IDBCursor | null> }} event
      */
     handleEvent({ target }: Event & {
-        target: IDBRequest<C | null>;
+        target: IDBRequest<IDBCursor | null>;
     }): void;
     /**
      * @internal
-     * @type {Promise<C | null>}
+     * @type {Promise<IDBCursor | null>}
      */
-    get _iteration(): Promise<C | null>;
+    get _iteration(): Promise<IDBCursor | null>;
     /**
      * @param {number} count
      */
@@ -86,313 +91,59 @@ export class ReadOnlyKeyCursor<C extends IDBCursor = IDBCursor> extends ReadOnly
     #private;
 }
 /**
- * @extends {ReadOnlyKeyCursor<IDBCursorWithValue>}
+ * @implements {AsyncIterableIterator<ReadOnlyCursor, null>}
  */
-export class ReadOnlyCursor extends ReadOnlyKeyCursor<IDBCursorWithValue> {
-    /**
-     * @param {IDBRequest<C | null>} request
-     */
-    constructor(request: IDBRequest<IDBCursorWithValue | null>);
+export class ReadOnlyCursor extends ReadOnlyKeyCursor implements AsyncIterableIterator<ReadOnlyCursor, null> {
     get value(): any;
 }
-export class ReadWriteCursor extends ReadOnlyCursor {
+/**
+ * @implements {AsyncIterableIterator<ReadWriteCursor, null>}
+ */
+export class ReadWriteCursor extends ReadOnlyCursor implements AsyncIterableIterator<ReadWriteCursor, null> {
     delete(): DBRequest<IDBRequest<undefined>, undefined, never>;
     /**
      * @param {any} value
      */
     update(value: any): DBRequest<IDBRequest<IDBValidKey>, IDBValidKey, never>;
 }
-declare const ReadOnlyIndexKeyCursor_base: {
-    new (...args: any[]): {
-        /**
-         * Can only be called on a cursor coming from an index.
-         * @param {IDBValidKey} key
-         * @param {IDBValidKey} primaryKey
-         * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-         */
-        continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
-        "__#private@#done": boolean;
-        /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
-        /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
-        /** @type {C} */
-        get cursor(): any;
-        /**
-         * Will be true when the underlying request's state is "pending".
-         * @type {boolean}
-         */
-        get pending(): boolean;
-        /**
-         * Can be used as the condition for a while-loop.
-         */
-        get done(): boolean;
-        get dir(): IDBCursorDirection;
-        get key(): IDBValidKey;
-        get primaryKey(): IDBValidKey;
-        /** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
-        get "__#private@#resolvers"(): {
-            resolve: (value: any) => void;
-            reject: (reason: any) => void;
-        };
-        "__#private@#cleanup"(): void;
-        /**
-         * @internal
-         * @param {Event & { target: IDBRequest<C | null> }} event
-         */
-        handleEvent({ target }: Event & {
-            target: IDBRequest<any>;
-        }): void;
-        /**
-         * @internal
-         * @type {Promise<C | null>}
-         */
-        get _iteration(): Promise<any>;
-        /**
-         * @param {number} count
-         */
-        advance(count: number): Promise</*elided*/ any>;
-        /**
-         * @example
-         * for await (const c of source.cursor()) {
-         *   // Do stuff...
-         *   // ...
-         *   // Override the async iterator's implicit continue request and specify a key.
-         *   // The async iterator will await the pending request before the next iteration..
-         *   cursor.continue(someKey)
-         * }
-         * @example
-         * const cursor = await source.cursor().open()
-         * while (cursor.done === false) {
-         *   // Do stuff...
-         *   // ...
-         *   // Call with or without specifying a key.
-         *   // Await the returned promise to complete the request.
-         *   await cursor.continue()
-         * }
-         * @param {IDBValidKey} [key]
-         */
-        continue(key?: IDBValidKey): Promise</*elided*/ any>;
-        /**
-         * Call and await before using in a while-loop.
-         * @example
-         * const cursor = await source.cursor().open()
-         * while (cursor.done === false) {
-         *   // Do stuff...
-         *   await cursor.continue()
-         * }
-         */
-        open(): Promise</*elided*/ any>;
-        /**
-         * @returns {Promise<IteratorResult<this, null>>} Next value.
-         */
-        next(): Promise<IteratorResult</*elided*/ any, null>>;
-        /**
-         * @returns {Promise<IteratorReturnResult<null>>} Done iteration.
-         */
-        return(value?: null): Promise<IteratorReturnResult<null>>;
-        [Symbol.asyncIterator](): /*elided*/ any;
-        [Symbol.asyncDispose](): void;
-        get target(): IDBRequest<any>;
-        wrap(target: IDBRequest<any>): /*elided*/ any;
-    };
-} & typeof ReadOnlyKeyCursor;
-export class ReadOnlyIndexKeyCursor extends ReadOnlyIndexKeyCursor_base {
+/**
+ * @implements {AsyncIterableIterator<ReadOnlyIndexKeyCursor, null>}
+ */
+export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor implements AsyncIterableIterator<ReadOnlyIndexKeyCursor, null> {
     /**
-     * @param {IDBRequest<C | null>} request
+     * Can only be called on a cursor coming from an index.
+     * @param {IDBValidKey} key
+     * @param {IDBValidKey} primaryKey
+     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
      */
-    constructor(request: IDBRequest<IDBCursor | null>);
+    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
 }
-declare const ReadOnlyIndexCursor_base: {
-    new (...args: any[]): {
-        /**
-         * Can only be called on a cursor coming from an index.
-         * @param {IDBValidKey} key
-         * @param {IDBValidKey} primaryKey
-         * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-         */
-        continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
-        "__#private@#done": boolean;
-        /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
-        /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
-        /** @type {C} */
-        get cursor(): any;
-        /**
-         * Will be true when the underlying request's state is "pending".
-         * @type {boolean}
-         */
-        get pending(): boolean;
-        /**
-         * Can be used as the condition for a while-loop.
-         */
-        get done(): boolean;
-        get dir(): IDBCursorDirection;
-        get key(): IDBValidKey;
-        get primaryKey(): IDBValidKey;
-        /** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
-        get "__#private@#resolvers"(): {
-            resolve: (value: any) => void;
-            reject: (reason: any) => void;
-        };
-        "__#private@#cleanup"(): void;
-        /**
-         * @internal
-         * @param {Event & { target: IDBRequest<C | null> }} event
-         */
-        handleEvent({ target }: Event & {
-            target: IDBRequest<any>;
-        }): void;
-        /**
-         * @internal
-         * @type {Promise<C | null>}
-         */
-        get _iteration(): Promise<any>;
-        /**
-         * @param {number} count
-         */
-        advance(count: number): Promise</*elided*/ any>;
-        /**
-         * @example
-         * for await (const c of source.cursor()) {
-         *   // Do stuff...
-         *   // ...
-         *   // Override the async iterator's implicit continue request and specify a key.
-         *   // The async iterator will await the pending request before the next iteration..
-         *   cursor.continue(someKey)
-         * }
-         * @example
-         * const cursor = await source.cursor().open()
-         * while (cursor.done === false) {
-         *   // Do stuff...
-         *   // ...
-         *   // Call with or without specifying a key.
-         *   // Await the returned promise to complete the request.
-         *   await cursor.continue()
-         * }
-         * @param {IDBValidKey} [key]
-         */
-        continue(key?: IDBValidKey): Promise</*elided*/ any>;
-        /**
-         * Call and await before using in a while-loop.
-         * @example
-         * const cursor = await source.cursor().open()
-         * while (cursor.done === false) {
-         *   // Do stuff...
-         *   await cursor.continue()
-         * }
-         */
-        open(): Promise</*elided*/ any>;
-        /**
-         * @returns {Promise<IteratorResult<this, null>>} Next value.
-         */
-        next(): Promise<IteratorResult</*elided*/ any, null>>;
-        /**
-         * @returns {Promise<IteratorReturnResult<null>>} Done iteration.
-         */
-        return(value?: null): Promise<IteratorReturnResult<null>>;
-        [Symbol.asyncIterator](): /*elided*/ any;
-        [Symbol.asyncDispose](): void;
-        get target(): IDBRequest<any>;
-        wrap(target: IDBRequest<any>): /*elided*/ any;
-    };
-} & typeof ReadOnlyCursor;
-export class ReadOnlyIndexCursor extends ReadOnlyIndexCursor_base {
+/**
+ * @implements {AsyncIterableIterator<ReadOnlyIndexCursor, null>}
+ */
+export class ReadOnlyIndexCursor extends ReadOnlyCursor implements AsyncIterableIterator<ReadOnlyIndexCursor, null> {
+    /**
+     * Can only be called on a cursor coming from an index.
+     * @param {IDBValidKey} key
+     * @param {IDBValidKey} primaryKey
+     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+     */
+    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
 }
-declare const ReadWriteIndexCursor_base: {
-    new (...args: any[]): {
-        /**
-         * Can only be called on a cursor coming from an index.
-         * @param {IDBValidKey} key
-         * @param {IDBValidKey} primaryKey
-         * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-         */
-        continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise</*elided*/ any>;
-        "__#private@#done": boolean;
-        /** @type {PromiseWithResolvers<C | null> | undefined} */ "__#private@#pending": PromiseWithResolvers<any> | undefined;
-        /** @type {IDBValidKey | undefined} */ "__#private@#prevIterKey": IDBValidKey | undefined;
-        /** @type {C} */
-        get cursor(): any;
-        /**
-         * Will be true when the underlying request's state is "pending".
-         * @type {boolean}
-         */
-        get pending(): boolean;
-        /**
-         * Can be used as the condition for a while-loop.
-         */
-        get done(): boolean;
-        get dir(): IDBCursorDirection;
-        get key(): IDBValidKey;
-        get primaryKey(): IDBValidKey;
-        /** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
-        get "__#private@#resolvers"(): {
-            resolve: (value: any) => void;
-            reject: (reason: any) => void;
-        };
-        "__#private@#cleanup"(): void;
-        /**
-         * @internal
-         * @param {Event & { target: IDBRequest<C | null> }} event
-         */
-        handleEvent({ target }: Event & {
-            target: IDBRequest<any>;
-        }): void;
-        /**
-         * @internal
-         * @type {Promise<C | null>}
-         */
-        get _iteration(): Promise<any>;
-        /**
-         * @param {number} count
-         */
-        advance(count: number): Promise</*elided*/ any>;
-        /**
-         * @example
-         * for await (const c of source.cursor()) {
-         *   // Do stuff...
-         *   // ...
-         *   // Override the async iterator's implicit continue request and specify a key.
-         *   // The async iterator will await the pending request before the next iteration..
-         *   cursor.continue(someKey)
-         * }
-         * @example
-         * const cursor = await source.cursor().open()
-         * while (cursor.done === false) {
-         *   // Do stuff...
-         *   // ...
-         *   // Call with or without specifying a key.
-         *   // Await the returned promise to complete the request.
-         *   await cursor.continue()
-         * }
-         * @param {IDBValidKey} [key]
-         */
-        continue(key?: IDBValidKey): Promise</*elided*/ any>;
-        /**
-         * Call and await before using in a while-loop.
-         * @example
-         * const cursor = await source.cursor().open()
-         * while (cursor.done === false) {
-         *   // Do stuff...
-         *   await cursor.continue()
-         * }
-         */
-        open(): Promise</*elided*/ any>;
-        /**
-         * @returns {Promise<IteratorResult<this, null>>} Next value.
-         */
-        next(): Promise<IteratorResult</*elided*/ any, null>>;
-        /**
-         * @returns {Promise<IteratorReturnResult<null>>} Done iteration.
-         */
-        return(value?: null): Promise<IteratorReturnResult<null>>;
-        [Symbol.asyncIterator](): /*elided*/ any;
-        [Symbol.asyncDispose](): void;
-        get target(): IDBRequest<any>;
-        wrap(target: IDBRequest<any>): /*elided*/ any;
-    };
-} & typeof ReadWriteCursor;
-export class ReadWriteIndexCursor extends ReadWriteIndexCursor_base {
+/**
+ * @implements {AsyncIterableIterator<ReadWriteIndexCursor, null>}
+ */
+export class ReadWriteIndexCursor extends ReadWriteCursor implements AsyncIterableIterator<ReadWriteIndexCursor, null> {
+    /**
+     * Can only be called on a cursor coming from an index.
+     * @param {IDBValidKey} key
+     * @param {IDBValidKey} primaryKey
+     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+     */
+    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
 }
 export namespace Cursor {
-    function readonlyKey(request: IDBRequest<IDBCursor | null>): ReadOnlyKeyCursor<IDBCursor>;
+    function readonlyKey(request: IDBRequest<IDBCursor | null>): ReadOnlyKeyCursor;
     function readonly(request: IDBRequest<IDBCursorWithValue | null>): ReadOnlyCursor;
     function readwrite(request: IDBRequest<IDBCursorWithValue | null>): ReadWriteCursor;
 }
