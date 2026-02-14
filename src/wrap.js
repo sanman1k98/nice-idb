@@ -130,7 +130,6 @@ export function Wrappable(Class) {
 				throw new TypeError('InvalidTarget');
 			this.#target = target;
 			return this;
-			// return /** @type {WrapperClass<T>}} */ (/** @type {unknown} */ (this));
 		}
 
 		/**
@@ -141,6 +140,5 @@ export function Wrappable(Class) {
 			return new this().wrap(target);
 		}
 	};
-	// return /** @type {{ wrap: (target: T) => WrapperClass<T> } & typeof WrapperClass<T>} */ (/** @type {unknown} */ (Wrapper));
 	return /** @type {typeof WrapperClass<T>} */ (/** @type {unknown} */ (Wrapper));
 }
