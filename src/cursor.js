@@ -1,19 +1,17 @@
-/** @import { Constructor } from '#types' */
 import { DBRequest } from './req';
 import { Wrappable } from './wrap';
 
 /**
- * @template {IDBCursor} [C = IDBCursor]
- * @implements {AsyncIterableIterator<ReadOnlyKeyCursor<C>, null>}
+ * @implements {AsyncIterableIterator<ReadOnlyKeyCursor, null>}
  */
 export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	#done = false;
 
-	/** @type {PromiseWithResolvers<C | null> | undefined} */ #pending;
+	/** @type {PromiseWithResolvers<IDBCursor | null> | undefined} */ #pending;
 	/** @type {IDBValidKey | undefined} */ #prevIterKey;
 
-	/** @type {C} */
-	get cursor() {
+	/** @type {IDBCursor} */
+	get _cursor() {
 		if (!super.target.result)
 			throw new TypeError('NullCursor');
 		return super.target.result;
@@ -33,14 +31,22 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 			||= !this.pending && !super.target.result;
 	}
 
-	get dir() { return this.cursor.direction; }
+	get dir() { return this._cursor.direction; }
 
-	get key() { return this.cursor.key; }
+	get key() { return this._cursor.key; }
 
-	get primaryKey() { return this.cursor.primaryKey; }
+	get primaryKey() { return this._cursor.primaryKey; }
 
 	/**
-	 * @param {IDBRequest<C | null>} request
+	 * @overload
+	 * @param {IDBRequest<IDBCursor | null>} request
+	 */
+	/**
+	 * @overload
+	 * @param {IDBRequest<IDBCursorWithValue | null>} request
+	 */
+	/**
+	 * @param {IDBRequest<IDBCursor | null> | IDBRequest<IDBCursorWithValue | null>} request
 	 */
 	constructor(request) {
 		super(request);
@@ -48,7 +54,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 		request.addEventListener('error', this);
 	}
 
-	/** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
+	/** @type {{ resolve: (value: IDBCursor | null) => void; reject: (reason: any) => void }} */
 	get #resolvers() {
 		const { promise: _, ...resolvers }
 			= this.#pending ??= Promise.withResolvers();
@@ -66,7 +72,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 
 	/**
 	 * @internal
-	 * @param {Event & { target: IDBRequest<C | null> }} event
+	 * @param {Event & { target: IDBRequest<IDBCursor | null> }} event
 	 */
 	handleEvent({ target }) {
 		const { result, error } = target;
@@ -76,7 +82,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 
 	/**
 	 * @internal
-	 * @type {Promise<C | null>}
+	 * @type {Promise<IDBCursor | null>}
 	 */
 	get _iteration() {
 		this.#pending ??= Promise.withResolvers();
@@ -89,7 +95,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	 * @param {number} count
 	 */
 	advance(count) {
-		this.cursor.advance(count);
+		this._cursor.advance(count);
 		return this._iteration.then(() => this);
 	}
 
@@ -114,7 +120,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	 * @param {IDBValidKey} [key]
 	 */
 	continue(key) {
-		this.cursor.continue(key);
+		this._cursor.continue(key);
 		return this._iteration.then(() => this);
 	}
 
@@ -140,7 +146,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 		if (this.#done)
 			return { value: null, done: true };
 		else if (!this.pending)
-			this.cursor.continue();
+			this._cursor.continue();
 
 		return this._iteration.then((cursor) => {
 			return !cursor
@@ -163,15 +169,21 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 }
 
 /**
- * @extends {ReadOnlyKeyCursor<IDBCursorWithValue>}
+ * @implements {AsyncIterableIterator<ReadOnlyCursor, null>}
  */
 export class ReadOnlyCursor extends ReadOnlyKeyCursor {
-	get value() { return super.cursor.value; }
+	get value() {
+		const cursor = /** @type {IDBCursorWithValue} */ (super._cursor);
+		return cursor.value;
+	}
 }
 
+/**
+ * @implements {AsyncIterableIterator<ReadWriteCursor, null>}
+ */
 export class ReadWriteCursor extends ReadOnlyCursor {
 	delete() {
-		const req = super.cursor.delete();
+		const req = super._cursor.delete();
 		return DBRequest.promisify(req);
 	}
 
@@ -179,35 +191,58 @@ export class ReadWriteCursor extends ReadOnlyCursor {
 	 * @param {any} value
 	 */
 	update(value) {
-		const req = super.cursor.update(value);
+		const req = super._cursor.update(value);
 		return DBRequest.promisify(req);
 	}
 }
 
 /**
- * @template {Constructor<ReadOnlyKeyCursor<any>>} T
- * @param {T} Base
+ * @implements {AsyncIterableIterator<ReadOnlyIndexKeyCursor, null>}
  */
-function IndexOnly(Base) {
-	return class extends Base {
-		/**
-		 * Can only be called on a cursor coming from an index.
-		 * @param {IDBValidKey} key
-		 * @param {IDBValidKey} primaryKey
-		 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-		 */
-		continuePrimaryKey(key, primaryKey) {
-			super.cursor.continuePrimaryKey(key, primaryKey);
-			return super._iteration.then(() => this);
-		}
-	};
+export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor {
+	/**
+	 * Can only be called on a cursor coming from an index.
+	 * @param {IDBValidKey} key
+	 * @param {IDBValidKey} primaryKey
+	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+	 */
+	continuePrimaryKey(key, primaryKey) {
+		super._cursor.continuePrimaryKey(key, primaryKey);
+		return super._iteration.then(() => this);
+	}
 }
 
-export class ReadOnlyIndexKeyCursor extends IndexOnly(ReadOnlyKeyCursor) { }
+/**
+ * @implements {AsyncIterableIterator<ReadOnlyIndexCursor, null>}
+ */
+export class ReadOnlyIndexCursor extends ReadOnlyCursor {
+	/**
+	 * Can only be called on a cursor coming from an index.
+	 * @param {IDBValidKey} key
+	 * @param {IDBValidKey} primaryKey
+	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+	 */
+	continuePrimaryKey(key, primaryKey) {
+		super._cursor.continuePrimaryKey(key, primaryKey);
+		return super._iteration.then(() => this);
+	}
+}
 
-export class ReadOnlyIndexCursor extends IndexOnly(ReadOnlyCursor) { }
-
-export class ReadWriteIndexCursor extends IndexOnly(ReadWriteCursor) { }
+/**
+ * @implements {AsyncIterableIterator<ReadWriteIndexCursor, null>}
+ */
+export class ReadWriteIndexCursor extends ReadWriteCursor {
+	/**
+	 * Can only be called on a cursor coming from an index.
+	 * @param {IDBValidKey} key
+	 * @param {IDBValidKey} primaryKey
+	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+	 */
+	continuePrimaryKey(key, primaryKey) {
+		super._cursor.continuePrimaryKey(key, primaryKey);
+		return super._iteration.then(() => this);
+	}
+}
 
 export const Cursor = {
 	readonlyKey: (/** @type {IDBRequest<IDBCursor | null>} */ request) => new ReadOnlyKeyCursor(request),
