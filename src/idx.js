@@ -1,5 +1,5 @@
 /** @import { OpenCursorOptions } from '#types' */
-import { IndexCursor } from './cursor.js';
+import { ReadOnlyIndexCursor, ReadOnlyIndexKeyCursor, ReadWriteIndexCursor } from './cursor.js';
 import { createModeGuardedWrap, Readable } from './source.js';
 import { cursorArgs } from './util.js';
 
@@ -21,7 +21,7 @@ export class ReadOnlyIndex extends Readable(IDBIndex) {
 	cursor(opts) {
 		const args = cursorArgs(opts);
 		const req = super.target.openCursor(...args);
-		return IndexCursor.readonly(req);
+		return new ReadOnlyIndexCursor(req);
 	}
 
 	/**
@@ -31,7 +31,7 @@ export class ReadOnlyIndex extends Readable(IDBIndex) {
 	keyCursor(opts) {
 		const args = cursorArgs(opts);
 		const req = super.target.openKeyCursor(...args);
-		return IndexCursor.readonlyKey(req);
+		return new ReadOnlyIndexKeyCursor(req);
 	}
 }
 
@@ -54,7 +54,7 @@ export class ReadWriteIndex extends ReadOnlyIndex {
 	cursor(opts) {
 		const args = cursorArgs(opts);
 		const req = super.target.openCursor(...args);
-		return IndexCursor.readwrite(req);
+		return new ReadWriteIndexCursor(req);
 	}
 }
 
