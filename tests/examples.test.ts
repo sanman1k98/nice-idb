@@ -13,9 +13,21 @@ async function example1() {
 			store.createIndex('by_author', 'author');
 
 			// Populate with initial data.
-			await store.put({ title: 'Quarry Memories', author: 'Fred', isbn: 123456 });
-			await store.put({ title: 'Water Buffaloes', author: 'Fred', isbn: 234567 });
-			await store.put({ title: 'Bedrock Nights', author: 'Barney', isbn: 345678 });
+			await store.put({
+				title: 'Quarry Memories',
+				author: 'Fred',
+				isbn: 123456,
+			});
+			await store.put({
+				title: 'Water Buffaloes',
+				author: 'Fred',
+				isbn: 234567,
+			});
+			await store.put({
+				title: 'Bedrock Nights',
+				author: 'Barney',
+				isbn: 345678,
+			});
 		});
 	});
 
@@ -25,40 +37,65 @@ async function example1() {
 	await db.latest().upgrade();
 
 	{
-		const tx = db.transaction('books', 'readonly');
-		const store = tx.store('books');
+		// Look up a single record in the database using an index.
+
+		// Convenience method to access a store.
+		const store = db.store('books');
 		const index = store.index('by_title');
 
 		const matching = await index.get('Bedrock Nights');
 
-		if (matching != null)
-			console.log(matching.isbn, matching.title, matching.author);
-		else
+		if (matching != null) {
+			console.log(
+				'A match was found',
+				matching.isbn,
+				matching.title,
+				matching.author,
+			);
+		} else {
 			console.log('No match found');
+		}
 	}
 
 	{
-		const tx = db.transaction('books', 'readonly');
-		const store = tx.store('books');
+		// Look up all matching records with a specific key using an index and cursor.
+
+		const store = db.store('books');
 		const index = store.index('by_author');
 
-		for await (const cursor of index.cursor({ only: 'Fred' }))
-			console.log(cursor.value.isbn, cursor.value.title, cursor.value.author);
+		for await (const cursor of index.cursor({ only: 'Fred' })) {
+			console.log(
+				cursor.value.isbn,
+				cursor.value.title,
+				cursor.value.author,
+			);
+		}
 
 		console.log('No more matching records');
 	}
 
 	{
+		// Handle request errors with a Promise=like interface.
+
 		const tx = db.transaction('books', 'readwrite');
 		const store = tx.store('books');
-		const request = store.put({ title: 'Water Buffaloes', author: 'Slate', isbn: 987654 });
+
+		const request = store.put({
+			title: 'Water Buffaloes', // Already exists.
+			author: 'Slate',
+			isbn: 987654,
+		});
 
 		await request.catch((error) => {
-			console.error(error);
+			console.assert(
+				error instanceof DOMException
+				&& error.name.includes('ConstraintError'),
+			);
+			console.error('The uniqueness constraint of the "by_title" index failed.');
 		});
 
 		tx.once('abort', () => {
-			console.error(tx.error);
+			console.error('Transaction aborted.', tx.error);
 		});
 	}
 
