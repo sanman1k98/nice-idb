@@ -215,34 +215,28 @@ export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor {
 /**
  * @implements {AsyncIterableIterator<ReadOnlyIndexCursor, null>}
  */
-export class ReadOnlyIndexCursor extends ReadOnlyCursor {
-	/**
-	 * Can only be called on a cursor coming from an index.
-	 * @param {IDBValidKey} key
-	 * @param {IDBValidKey} primaryKey
-	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-	 */
-	continuePrimaryKey(key, primaryKey) {
-		super._cursor.continuePrimaryKey(key, primaryKey);
-		return super._iteration.then(() => this);
-	}
-}
+export class ReadOnlyIndexCursor extends ReadOnlyCursor { }
 
 /**
  * @implements {AsyncIterableIterator<ReadWriteIndexCursor, null>}
  */
-export class ReadWriteIndexCursor extends ReadWriteCursor {
-	/**
-	 * Can only be called on a cursor coming from an index.
-	 * @param {IDBValidKey} key
-	 * @param {IDBValidKey} primaryKey
-	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-	 */
-	continuePrimaryKey(key, primaryKey) {
-		super._cursor.continuePrimaryKey(key, primaryKey);
-		return super._iteration.then(() => this);
-	}
-}
+export class ReadWriteIndexCursor extends ReadWriteCursor { }
+
+/**
+ * Can only be called on a cursor coming from an index.
+ * @param {IDBValidKey} key
+ * @param {IDBValidKey} primaryKey
+ * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+ */
+ReadOnlyIndexCursor.prototype.continuePrimaryKey = ReadOnlyIndexKeyCursor.prototype.continuePrimaryKey;
+
+/**
+ * Can only be called on a cursor coming from an index.
+ * @param {IDBValidKey} key
+ * @param {IDBValidKey} primaryKey
+ * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+ */
+ReadWriteIndexCursor.prototype.continuePrimaryKey = ReadOnlyIndexKeyCursor.prototype.continuePrimaryKey;
 
 export const Cursor = {
 	readonlyKey: (/** @type {IDBRequest<IDBCursor | null>} */ request) => new ReadOnlyKeyCursor(request),
