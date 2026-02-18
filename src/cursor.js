@@ -27,8 +27,9 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	 * Can be used as the condition for a while-loop.
 	 */
 	get done() {
-		return this.#done
-			||= !this.pending && !super.target.result;
+		if (!this.pending && !super.target.result)
+			this.#cleanup();
+		return this.#done;
 	}
 
 	get dir() { return this._cursor.direction; }
