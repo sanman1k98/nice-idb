@@ -142,3 +142,76 @@ export function Wrappable(Class) {
 	};
 	return /** @type {typeof WrapperClass<T>} */ (/** @type {unknown} */ (Wrapper));
 }
+
+/**
+ * Extend this class to wrap and augment existing classes.
+ * @template T
+ */
+export class Wrapper {
+	/**
+	 * The class of instances to wrap.
+	 * @readonly
+	 * @abstract
+	 * @protected
+	 * @type {Constructor}
+	 */
+	static Target = Object;
+
+	/**
+	 * Determines whether the given value is an instance of `Target` and
+	 * therefore can be wrapped by this class.
+	 * @param {unknown} value
+	 */
+	static isWrappable(value) {
+		if (this.Target === Wrapper.Target)
+			throw new Error('InvalidWrapperOverride');
+		return Object.getPrototypeOf(value) === this.Target.prototype;
+	}
+
+	/**
+	 * Will throw if the given value cannot be wrapped by this class.
+	 * @param {unknown} value
+	 */
+	static assertWrappable(value) {
+		if (!this.isWrappable(value))
+			throw new TypeError(`Expected an instance of ${this.Target.name}`);
+	}
+
+	/** @type {T | undefined} */
+	#target = undefined;
+
+	/**
+	 * Get access to the underlying wrapped instance.
+	 * @protected
+	 */
+	get target() { return /** @type {T} */(this.#target); }
+
+	/**
+	 * @param {T} [target]
+	 */
+	constructor(target) {
+		if (new.target === Wrapper)
+			throw new Error('MustBeSubclassed');
+		this.#target = target;
+	}
+
+	/**
+	 * @protected
+	 * @param {T} target
+	 */
+	wrap(target) {
+		this.#target = target;
+		return this;
+	}
+
+	/**
+	 * Check the given value is wrappable and return a new wrapped instance.
+	 * @protected
+	 * @abstract
+	 * @param {unknown} target
+	 */
+	static wrap(target) {
+		this.assertWrappable(target);
+		return new this(target);
+	}
+}
