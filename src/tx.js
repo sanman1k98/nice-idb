@@ -45,7 +45,6 @@ export class ReadOnlyTransaction extends Wrapper {
 
 	get error() { return super.target.error; }
 	get durability() { return super.target.durability; }
-	get mode() { return super.target.mode; }
 
 	/**
 	 * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
