@@ -1,29 +1,44 @@
-/** @import { Constructor, WrapperClass } from '#types' */
+/** @import { Constructor } from '#types' */
 import { ReadOnlyStore, ReadWriteStore, UpgradableStore } from './store.js';
 import { toStrings } from './util.js';
-import { Wrappable } from './wrap.js';
+import { Wrapper } from './wrap.js';
 
 /**
- * @template {WrapperClass<IDBTransaction>} C
- * @template {C extends WrapperClass<infer U> ? U : never} T
- * @param {Constructor<C> & { mode: IDBTransactionMode }} Class
+ * @template {Wrapper<IDBTransaction>} C
+ * @template {C extends Wrapper<infer U> ? U : never} T
+ * @param {Constructor<C> & Pick<typeof Wrapper, 'assertWrappable'> & { mode: IDBTransactionMode }} Class
  */
-export function createModeGuardedWrap(Class) {
-	return function (/** @type {T} */ target) {
-		if (target.mode !== Class.mode)
+export function bindWrap(Class) {
+	/** @param {T} tx */
+	return function (tx) {
+		Class.assertWrappable(tx);
+		if (tx.mode !== Class.mode)
 			throw new Error('InvalidMode');
-		return new Class(target);
+		return new Class(tx);
 	};
 }
 
 /**
  * @implements {Disposable}
+ * @extends {Wrapper<IDBTransaction>}
  */
-export class ReadOnlyTransaction extends Wrappable(IDBTransaction) {
+export class ReadOnlyTransaction extends Wrapper {
+	/**
+	 * @protected
+	 * @override
+	 */
+	static Target = IDBTransaction;
+
 	/**
 	 * @type {IDBTransactionMode}
 	 */
 	static mode = 'readonly';
+
+	/**
+	 * Wrap an existing IDBTransaction instance.
+	 * @override
+	 */
+	static wrap = bindWrap(this);
 
 	/** @type {Promise<Event>} @readonly */ #finish;
 	/** @type {Event | undefined} */ #event;
@@ -51,7 +66,7 @@ export class ReadOnlyTransaction extends Wrappable(IDBTransaction) {
 	get storeNames() { return toStrings(super.target.objectStoreNames); }
 
 	/**
-	 * @param {IDBTransaction} tx - The transaction instance to wrap.
+	 * @param {IDBTransaction} tx
 	 */
 	constructor(tx) {
 		super(tx);
@@ -68,12 +83,6 @@ export class ReadOnlyTransaction extends Wrappable(IDBTransaction) {
 			tx.addEventListener('abort', handleEvent, opts);
 		});
 	}
-
-	/**
-	 * Wrap an existing IDBTransaction instance.
-	 * @override
-	 */
-	static wrap = createModeGuardedWrap(this);
 
 	/**
 	 * Get an object store within the transaction's scope.
@@ -270,7 +279,7 @@ export class ReadWriteTransaction extends ReadOnlyTransaction {
 	/**
 	 * @override
 	 */
-	static wrap = createModeGuardedWrap(this);
+	static wrap = bindWrap(this);
 
 	/**
 	 * @override
@@ -292,7 +301,7 @@ export class UpgradeTransaction extends ReadWriteTransaction {
 	/**
 	 * @override
 	 */
-	static wrap = createModeGuardedWrap(this);
+	static wrap = bindWrap(this);
 
 	/**
 	 * @override

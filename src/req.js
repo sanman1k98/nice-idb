@@ -1,4 +1,4 @@
-import { Wrappable } from './wrap';
+import { Wrapper } from './wrap';
 
 /**
  * A "thenable" wrapper for `IDBRequest` objects. Use await to get the
@@ -39,8 +39,15 @@ import { Wrappable } from './wrap';
  * @template [TResolved = R['result']]
  * @template [TRejected = never]
  * @implements {PromiseLike<TResolved | TRejected>}
+ * @extends {Wrapper<IDBRequest>}
  */
-export class DBRequest extends Wrappable(IDBRequest) {
+export class DBRequest extends Wrapper {
+	/**
+	 * @override
+	 * @protected
+	 */
+	static Target = IDBRequest;
+
 	/** @type {TResolved | TRejected | PromiseLike<TResolved | TRejected> | undefined} */ #result;
 	/** @type {((value: R['result']) => TResolved | PromiseLike<TResolved>) | undefined | null} @readonly */ #onfulfilled;
 	/** @type {((reason: any) => TRejected | PromiseLike<TRejected>) | undefined | null} @readonly */ #onrejected;
@@ -125,7 +132,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	}
 
 	/**
-	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
@@ -151,7 +158,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	}
 
 	/**
-	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
@@ -177,7 +184,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	}
 
 	/**
-	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
@@ -219,7 +226,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	}
 
 	/**
-	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type
@@ -245,7 +252,7 @@ export class DBRequest extends Wrappable(IDBRequest) {
 	}
 
 	/**
-	 * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+	 * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
 	 * @template {keyof M} K
 	 * @overload
 	 * @param {K} type

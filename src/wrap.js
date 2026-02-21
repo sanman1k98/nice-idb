@@ -1,4 +1,4 @@
-/** @import { Constructor, WrapperClass } from '#types' */
+/** @import { Constructor } from '#types' */
 
 /**
  * Create a Proxy for an object that will be created or swapped out later.
@@ -85,62 +85,6 @@ export class VirtualInstance {
 				Reflect.set(this.prototype, trap, this.#createTrap(trap));
 		}
 	}
-}
-
-/**
- * Use to create a class to augment or "wrap" another.
- * @template {object} T
- * @param {Constructor<T>} Class
- */
-export function Wrappable(Class) {
-	class Wrapper {
-		/** @type {Constructor<T>} @readonly */
-		static #Class = Class;
-		static #placeholder;
-
-		static {
-			const instance = VirtualInstance.defer(this.#Class);
-			this.#placeholder = instance.proxy;
-		}
-
-		/** @type {T | undefined} */
-		#target = undefined;
-
-		/**
-		 * @internal
-		 */
-		get target() { return this.#target ?? Wrapper.#placeholder; }
-
-		/**
-		 * @param {T | undefined} [target]
-		 */
-		constructor(target) {
-			if (target != null && target instanceof Wrapper.#Class === false)
-				throw new TypeError('InvalidTarget');
-			this.#target = target;
-		}
-
-		/**
-		 * @param {NonNullable<T>} target
-		 */
-		wrap(target) {
-			if (this.#target)
-				throw new Error('TargetAlreadySet');
-			if (target instanceof Wrapper.#Class === false)
-				throw new TypeError('InvalidTarget');
-			this.#target = target;
-			return this;
-		}
-
-		/**
-		 * Create a wrapper for the given target.
-		 * @param {T} target
-		 */
-		static wrap(target) {
-			return new this().wrap(target);
-		}
-	};
-	return /** @type {typeof WrapperClass<T>} */ (/** @type {unknown} */ (Wrapper));
 }
 
 /**

@@ -1,26 +1,29 @@
-/** @import { Constructor, RegisterUpgrade, UpgradeCallback, UpgradeState } from '#types' */
+/** @import { RegisterUpgrade, UpgradeCallback, UpgradeState } from '#types' */
 import { DBRequest } from './req.js';
 import { ReadOnlyStore, ReadWriteStore, UpgradableStore } from './store.js';
 import { ReadOnlyTransaction, ReadWriteTransaction, UpgradeTransaction } from './tx.js';
 import { toStrings } from './util.js';
-import { VirtualInstance, Wrappable } from './wrap.js';
+import { VirtualInstance, Wrapper } from './wrap.js';
 
 /**
- * @param {Constructor<DatabaseWrapper>} Class
+ * @extends {Wrapper<IDBDatabase>}
  */
-function createWrapFunc(Class) {
-	/** @this {Constructor<DatabaseWrapper>} @param {IDBDatabase} target */
-	return function (target) {
-		return new Class(target);
-	};
-}
-
-export class DatabaseWrapper extends Wrappable(IDBDatabase) {
+export class DatabaseWrapper extends Wrapper {
 	/**
-	 * Wrap an existing IDBDatabase instance.
 	 * @override
+	 * @protected
 	 */
-	static wrap = createWrapFunc(this);
+	static Target = IDBDatabase;
+
+	/**
+	 * Wrap an existing database connection.
+	 * @override
+	 * @param {IDBDatabase} db
+	 */
+	static wrap(db) {
+		super.assertWrappable(db);
+		return new DatabaseWrapper(db);
+	}
 
 	/**
 	 * Name of the connected database.
@@ -285,10 +288,15 @@ export class DatabaseWrapper extends Wrappable(IDBDatabase) {
  */
 export class UpgradableDatabase extends DatabaseWrapper {
 	/**
-	 * Wrap an IDBDatabase instance for making changes to the database structure.
+	 * Wrap an IDBDatabase within an "upgrade transaction" that can be used to
+	 * modify the structure of the underlying database.
 	 * @override
+	 * @param {IDBDatabase} db
 	 */
-	static wrap = createWrapFunc(this);
+	static wrap(db) {
+		super.assertWrappable(db);
+		return new this(db);
+	}
 
 	/**
 	 * Create and return a new object store.
@@ -429,15 +437,6 @@ export class Database extends DatabaseWrapper {
 			throw new TypeError('Expected a string');
 		super();
 		this.#name = name;
-	}
-
-	/**
-	 * Wrap an existing database.
-	 * @param {IDBDatabase} db
-	 * @override
-	 */
-	static wrap(db) {
-		return new DatabaseWrapper(db);
 	}
 
 	/**

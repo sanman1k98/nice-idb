@@ -1,20 +1,90 @@
+/** @import { Constructor } from '#types'; */
 import { DBRequest } from './req';
-import { Wrappable } from './wrap';
+import { Wrapper } from './wrap';
 
 /**
- * @implements {AsyncIterableIterator<ReadOnlyKeyCursor, null>}
+ * @template {CursorWrapper<any>} C
+ * @template {C extends Wrapper<infer U> ? U : never} T
+ * @param {Constructor<C> & Pick<typeof CursorWrapper, 'assertWrappable' | 'mode'>} Class
  */
-export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
+function createWrap(Class) {
+	/** @param {T} req */
+	return function (req) {
+		Class.assertWrappable(req);
+		// @ts-expect-error
+		const { mode } = req.transaction;
+		if (mode === 'readonly' && Class.mode !== mode)
+			throw new Error('InvalidMode');
+		return new Class(req);
+	};
+}
+
+/**
+ *
+ * @template {IDBCursor} C
+ * @extends {Wrapper<IDBRequest<C | null>>}
+ */
+class CursorWrapper extends Wrapper {
+	/**
+	 * @type {'readonly' | 'readwrite'}
+	 */
+	static mode = 'readonly';
+
+	/**
+	 * @override
+	 * @protected
+	 */
+	static Target = IDBRequest;
+
+	/**
+	 * @protected
+	 * @type {Constructor<IDBObjectStore> | Constructor<IDBIndex>}
+	 */
+	static Source = IDBObjectStore;
+
+	/**
+	 * Used by `Wrapper.assertWrappable()`.
+	 * @override
+	 * @param {unknown} value
+	 */
+	static isWrappable(value) {
+		return value instanceof IDBRequest
+			&& value.source instanceof this.Source;
+	}
+
+	/**
+	 * @protected
+	 * @type {Constructor<IDBCursor>}
+	 */
+	static Cursor = IDBCursor;
+
+	/**
+	 * @param {unknown} result
+	 * @returns {arg is InstanceType<typeof this.Cursor>}
+	 */
+	static #isCursorable(result) {
+		return Object.getPrototypeOf(result) === this.Cursor.prototype;
+	}
+
+	/** @type {PromiseWithResolvers<C | null> | undefined} */ #pending;
+	/** @type {IDBValidKey | undefined} */ #prevIterKey;
+	/** @type {boolean | undefined} */ #isCursor;
+
+	/** @type {boolean} */
 	#done = false;
 
-	/** @type {PromiseWithResolvers<IDBCursor | null> | undefined} */ #pending;
-	/** @type {IDBValidKey | undefined} */ #prevIterKey;
-
-	/** @type {IDBCursor} */
-	get _cursor() {
-		if (!super.target.result)
+	/**
+	 * @protected
+	 */
+	get cursor() {
+		const { result } = super.target;
+		if (!result)
 			throw new TypeError('NullCursor');
-		return super.target.result;
+		this.#isCursor ??= CursorWrapper.#isCursorable
+			.call(this.constructor, result);
+		if (!this.#isCursor)
+			throw new TypeError('InvalidCursor');
+		return result;
 	}
 
 	/**
@@ -32,22 +102,26 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 		return this.#done;
 	}
 
-	get dir() { return this._cursor.direction; }
-
-	get key() { return this._cursor.key; }
-
-	get primaryKey() { return this._cursor.primaryKey; }
-
 	/**
-	 * @overload
-	 * @param {IDBRequest<IDBCursor | null>} request
+	 * The direction of traversal of the cursor.
+	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursor/direction}
 	 */
+	get dir() { return this.cursor.direction; }
+
 	/**
-	 * @overload
-	 * @param {IDBRequest<IDBCursorWithValue | null>} request
+	 * The key for the record at the cursor's position.
+	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursor/key}
 	 */
+	get key() { return this.cursor.key; }
+
 	/**
-	 * @param {IDBRequest<IDBCursor | null> | IDBRequest<IDBCursorWithValue | null>} request
+	 * The current effective key.
+	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursor/primaryKey}
+	 */
+	get primaryKey() { return this.cursor.primaryKey; }
+
+	/**
+	 * @param {IDBRequest<C | null>} request
 	 */
 	constructor(request) {
 		super(request);
@@ -55,7 +129,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 		request.addEventListener('error', this);
 	}
 
-	/** @type {{ resolve: (value: IDBCursor | null) => void; reject: (reason: any) => void }} */
+	/** @type {{ resolve: (value: C | null) => void; reject: (reason: any) => void }} */
 	get #resolvers() {
 		const { promise: _, ...resolvers }
 			= this.#pending ??= Promise.withResolvers();
@@ -73,7 +147,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 
 	/**
 	 * @internal
-	 * @param {Event & { target: IDBRequest<IDBCursor | null> }} event
+	 * @param {Event & { target: IDBRequest<C | null> }} event
 	 */
 	handleEvent({ target }) {
 		const { result, error } = target;
@@ -82,10 +156,10 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	}
 
 	/**
-	 * @internal
+	 * @protected
 	 * @type {Promise<IDBCursor | null>}
 	 */
-	get _iteration() {
+	get iteration() {
 		this.#pending ??= Promise.withResolvers();
 		return this.#pending.promise.then((cursor) => {
 			return (this.#prevIterKey = cursor?.key, cursor);
@@ -96,8 +170,8 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	 * @param {number} count
 	 */
 	advance(count) {
-		this._cursor.advance(count);
-		return this._iteration.then(() => this);
+		this.cursor.advance(count);
+		return this.iteration.then(() => this);
 	}
 
 	/**
@@ -121,8 +195,8 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	 * @param {IDBValidKey} [key]
 	 */
 	continue(key) {
-		this._cursor.continue(key);
-		return this._iteration.then(() => this);
+		this.cursor.continue(key);
+		return this.iteration.then(() => this);
 	}
 
 	/**
@@ -136,7 +210,7 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 	 */
 	async open() {
 		if (this.#prevIterKey === undefined)
-			return this._iteration.then(() => this);
+			return this.iteration.then(() => this);
 		throw new Error('CursorAlreadyOpened');
 	}
 
@@ -147,17 +221,20 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 		if (this.#done)
 			return { value: null, done: true };
 		else if (!this.pending)
-			this._cursor.continue();
+			this.cursor.continue();
 
-		return this._iteration.then((cursor) => {
-			return !cursor
-				? (this.#cleanup(), { value: null, done: true })
-				: { value: this };
+		return this.iteration.then(async (cursor) => {
+			/** @satisfies {IteratorResult<this>} */
+			return cursor
+				? { value: this }
+				: this.return(null);
 		});
 	}
 
 	/**
-	 * @returns {Promise<IteratorReturnResult<null>>} Done iteration.
+	 * @template T
+	 * @param {T | null} value
+	 * @returns {Promise<IteratorReturnResult<T | null>>}
 	 */
 	async return(value = null) {
 		this.#cleanup();
@@ -170,21 +247,59 @@ export class ReadOnlyKeyCursor extends Wrappable(IDBRequest) {
 }
 
 /**
- * @implements {AsyncIterableIterator<ReadOnlyCursor, null>}
+ * @implements {AsyncIterableIterator<ReadOnlyKeyCursor>}
+ * @extends {CursorWrapper<IDBCursor>}
  */
-export class ReadOnlyCursor extends ReadOnlyKeyCursor {
-	get value() {
-		const cursor = /** @type {IDBCursorWithValue} */ (super._cursor);
-		return cursor.value;
-	}
+export class ReadOnlyKeyCursor extends CursorWrapper {
+	/**
+	 * Wrap an existing request for a cursor.
+	 * @override
+	 */
+	static wrap = createWrap(this);
 }
 
 /**
- * @implements {AsyncIterableIterator<ReadWriteCursor, null>}
+ * @implements {AsyncIterableIterator<ReadOnlyCursor>}
+ * @extends {CursorWrapper<IDBCursorWithValue>}
+ */
+export class ReadOnlyCursor extends CursorWrapper {
+	/**
+	 * @override
+	 * @protected
+	 */
+	static Cursor = IDBCursorWithValue;
+
+	/**
+	 * Wrap an existing request for a cursor.
+	 * @override
+	 */
+	static wrap = createWrap(this);
+
+	/**
+	 * The value of record at the cursor's position.
+	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursorWithValue/value}
+	 */
+	get value() { return super.cursor.value; }
+}
+
+/**
+ * @implements {AsyncIterableIterator<ReadWriteCursor>}
  */
 export class ReadWriteCursor extends ReadOnlyCursor {
+	/**
+	 * @override
+	 * @type {'readonly' | 'readwrite'}
+	 */
+	static mode = 'readwrite';
+
+	/**
+	 * Wrap an existing request for a cursor.
+	 * @override
+	 */
+	static wrap = createWrap(this);
+
 	delete() {
-		const req = super._cursor.delete();
+		const req = super.cursor.delete();
 		return DBRequest.promisify(req);
 	}
 
@@ -192,15 +307,27 @@ export class ReadWriteCursor extends ReadOnlyCursor {
 	 * @param {any} value
 	 */
 	update(value) {
-		const req = super._cursor.update(value);
+		const req = super.cursor.update(value);
 		return DBRequest.promisify(req);
 	}
 }
 
 /**
- * @implements {AsyncIterableIterator<ReadOnlyIndexKeyCursor, null>}
+ * @implements {AsyncIterableIterator<ReadOnlyIndexKeyCursor>}
  */
 export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor {
+	/**
+	 * @override
+	 * @protected
+	 */
+	static Source = IDBIndex;
+
+	/**
+	 * Wrap an existing request for a cursor.
+	 * @override
+	 */
+	static wrap = createWrap(this);
+
 	/**
 	 * Can only be called on a cursor coming from an index.
 	 * @param {IDBValidKey} key
@@ -208,45 +335,75 @@ export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor {
 	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
 	 */
 	continuePrimaryKey(key, primaryKey) {
-		super._cursor.continuePrimaryKey(key, primaryKey);
-		return super._iteration.then(() => this);
+		super.cursor.continuePrimaryKey(key, primaryKey);
+		return super.iteration.then(() => this);
 	}
 }
 
 /**
- * @implements {AsyncIterableIterator<ReadOnlyIndexCursor, null>}
+ * @implements {AsyncIterableIterator<ReadOnlyIndexCursor>}
  */
-export class ReadOnlyIndexCursor extends ReadOnlyCursor { }
+export class ReadOnlyIndexCursor extends ReadOnlyCursor {
+	/**
+	 * @override
+	 * @protected
+	 */
+	static Source = IDBIndex;
+
+	/**
+	 * Wrap an existing request for a cursor.
+	 * @override
+	 */
+	static wrap = createWrap(this);
+
+	/**
+	 * Can only be called on a cursor coming from an index.
+	 * @param {IDBValidKey} key
+	 * @param {IDBValidKey} primaryKey
+	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+	 */
+	continuePrimaryKey(key, primaryKey) {
+		super.cursor.continuePrimaryKey(key, primaryKey);
+		return super.iteration.then(() => this);
+	}
+}
 
 /**
- * @implements {AsyncIterableIterator<ReadWriteIndexCursor, null>}
+ * @implements {AsyncIterableIterator<ReadWriteIndexCursor>}
  */
-export class ReadWriteIndexCursor extends ReadWriteCursor { }
+export class ReadWriteIndexCursor extends ReadWriteCursor {
+	/**
+	 * @override
+	 * @protected
+	 */
+	static Source = IDBIndex;
 
-/**
- * Can only be called on a cursor coming from an index.
- * @param {IDBValidKey} key
- * @param {IDBValidKey} primaryKey
- * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
- */
-ReadOnlyIndexCursor.prototype.continuePrimaryKey = ReadOnlyIndexKeyCursor.prototype.continuePrimaryKey;
+	/**
+	 * Wrap an existing request for a cursor.
+	 * @override
+	 */
+	static wrap = createWrap(this);
 
-/**
- * Can only be called on a cursor coming from an index.
- * @param {IDBValidKey} key
- * @param {IDBValidKey} primaryKey
- * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
- */
-ReadWriteIndexCursor.prototype.continuePrimaryKey = ReadOnlyIndexKeyCursor.prototype.continuePrimaryKey;
+	/**
+	 * Can only be called on a cursor coming from an index.
+	 * @param {IDBValidKey} key
+	 * @param {IDBValidKey} primaryKey
+	 * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+	 */
+	continuePrimaryKey(key, primaryKey) {
+		super.cursor.continuePrimaryKey(key, primaryKey);
+		return super.iteration.then(() => this);
+	}
+}
 
 export const Cursor = {
-	readonlyKey: (/** @type {IDBRequest<IDBCursor | null>} */ request) => new ReadOnlyKeyCursor(request),
-	readonly: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadOnlyCursor(request),
-	readwrite: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadWriteCursor(request),
+	readonlyKey: ReadOnlyKeyCursor.wrap,
+	readonly: ReadOnlyCursor.wrap,
+	readwrite: ReadWriteCursor.wrap,
 };
 
 export const IndexCursor = {
-	readonlyKey: (/** @type {IDBRequest<IDBCursor | null>} */ request) => new ReadOnlyIndexKeyCursor(request),
-	readonly: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadOnlyIndexCursor(request),
-	readwrite: (/** @type {IDBRequest<IDBCursorWithValue | null>} */ request) => new ReadWriteIndexCursor(request),
+	readonlyKey: ReadOnlyIndexKeyCursor.wrap,
+	readonly: ReadOnlyIndexCursor.wrap,
+	readwrite: ReadWriteIndexCursor.wrap,
 };

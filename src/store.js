@@ -1,11 +1,36 @@
-/** @import { OpenCursorOptions } from '#types' */
+/** @import { Constructor, OpenCursorOptions } from '#types' */
 import { ReadWriteCursor } from './cursor.js';
 import { ReadOnlyIndex, ReadWriteIndex } from './idx.js';
 import { DBRequest } from './req.js';
-import { createModeGuardedWrap, Readable } from './source.js';
+import { ReadOnlySource } from './source.js';
 import { cursorArgs, toStrings } from './util.js';
 
-export class ReadOnlyStore extends Readable(IDBObjectStore) {
+/**
+ * @template {ReadOnlySource<IDBObjectStore>} C
+ * @template {C extends ReadOnlySource<infer U> ? U : never} T
+ * @param {Constructor<C> & Pick<typeof ReadOnlySource, 'mode' | 'assertWrappable'>} Class
+ */
+function bindWrap(Class) {
+	/** @param {T} store */
+	return function (store) {
+		Class.assertWrappable(store);
+		const { mode } = store.transaction;
+		if (Class.mode === 'readonly' || mode === 'versionchange' || Class.mode === mode)
+			return new Class(store);
+		throw new Error('InvalidTargetMode');
+	};
+}
+
+/**
+ * @extends {ReadOnlySource<IDBObjectStore>}
+ */
+export class ReadOnlyStore extends ReadOnlySource {
+	/**
+	 * @override
+	 * @protected
+	 */
+	static Target = IDBObjectStore;
+
 	get autoIncrement() { return super.target.autoIncrement; }
 
 	get indexNames() { return toStrings(super.target.indexNames); }
@@ -14,7 +39,7 @@ export class ReadOnlyStore extends Readable(IDBObjectStore) {
 	 * Wrap an exising IDBObjectStore instance.
 	 * @override
 	 */
-	static wrap = createModeGuardedWrap(this);
+	static wrap = bindWrap(this);
 
 	/**
 	 * @param {string} name
@@ -35,7 +60,7 @@ export class ReadWriteStore extends ReadOnlyStore {
 	/**
 	 * @override
 	 */
-	static wrap = createModeGuardedWrap(this);
+	static wrap = bindWrap(this);
 
 	/**
 	 * @param {any} value
@@ -98,7 +123,7 @@ export class UpgradableStore extends ReadWriteStore {
 	/**
 	 * @override
 	 */
-	static wrap = createModeGuardedWrap(this);
+	static wrap = bindWrap(this);
 
 	/**
 	 * @param {string} name

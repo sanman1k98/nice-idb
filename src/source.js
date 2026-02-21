@@ -1,103 +1,101 @@
-/** @import { Constructor, OpenCursorOptions, WrapperClass } from '#types' */
+/** @import { OpenCursorOptions } from '#types' */
 import { ReadOnlyCursor, ReadOnlyKeyCursor } from './cursor.js';
 import { DBRequest } from './req.js';
 import { cursorArgs } from './util.js';
-import { Wrappable } from './wrap.js';
+import { Wrapper } from './wrap.js';
 
 /**
- * @template {WrapperClass<IDBIndex | IDBObjectStore>} C
- * @template {C extends WrapperClass<infer U> ? U : never} T
- * @param {Constructor<C> & { mode: IDBTransactionMode }} Class
- */
-export function createModeGuardedWrap(Class) {
-	/** @param {T} target */
-	return function (target) {
-		const wrapped = new Class(target);
-		const tx = target instanceof IDBIndex
-			? target.objectStore.transaction
-			: target.transaction;
-		if (tx.mode !== Class.mode)
-			throw new Error('TargetModeInvalid');
-		return wrapped;
-	};
-}
-
-/**
- * Read-only methods for object store and index sources.
+ * Methods shared by both object stores and indexes.
  * @template {IDBIndex | IDBObjectStore} T
- * @param {Constructor<T>} Source
+ * @extends {Wrapper<T>}
  */
-export function Readable(Source) {
-	return class ReadOnlySource extends Wrappable(Source) {
-		/**
-		 * @type {IDBTransactionMode}
-		 */
-		static mode = 'readonly';
+export class ReadOnlySource extends Wrapper {
+	/**
+	 * @type {IDBTransactionMode}
+	 */
+	static mode = 'readonly';
 
-		get name() { return super.target.name; }
+	/**
+	 * The name of this source.
+	 */
+	get name() { return super.target.name; }
 
-		get keyPath() { return super.target.keyPath; }
+	/**
+	 * The key path of this source.
+	 */
+	get keyPath() { return super.target.keyPath; }
 
-		/**
-		 * @param {IDBValidKey | IDBKeyRange} [key]
-		 */
-		count(key) {
-			const req = super.target.count(key);
-			return DBRequest.promisify(req);
-		}
+	/**
+	 * Get the total number of records in this source, or the number of ones
+	 * that match the provided key or key range.
+	 * @param {IDBValidKey | IDBKeyRange} [key]
+	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/count}
+	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBIndex/count}
+	 */
+	count(key) {
+		const req = super.target.count(key);
+		return DBRequest.promisify(req);
+	}
 
-		/**
-		 * @param {IDBValidKey | IDBKeyRange} query
-		 */
-		get(query) {
-			const req = super.target.get(query);
-			return DBRequest.promisify(req);
-		}
+	/**
+	 * Get the record selected by the given key.
+	 * @param {IDBValidKey | IDBKeyRange} query
+	 */
+	get(query) {
+		const req = super.target.get(query);
+		return DBRequest.promisify(req);
+	}
 
-		/**
-		 * @param {IDBValidKey | IDBKeyRange | null | undefined} [query]
-		 * @param {number | undefined} [count]
-		 */
-		getAll(query, count) {
-			const req = super.target.getAll(query, count);
-			return DBRequest.promisify(req);
-		}
+	/**
+	 * Get all records in this source matching the specified key range, or all
+	 * the records in this source if no argument is provided.
+	 * @param {IDBValidKey | IDBKeyRange | null | undefined} [query]
+	 * @param {number | undefined} [count]
+	 */
+	getAll(query, count) {
+		const req = super.target.getAll(query, count);
+		return DBRequest.promisify(req);
+	}
 
-		/**
-		 * @param {IDBValidKey | IDBKeyRange | null | undefined} [query]
-		 * @param {number | undefined} [count]
-		 */
-		getAllKeys(query, count) {
-			const req = super.target.getAllKeys(query, count);
-			return DBRequest.promisify(req);
-		}
+	/**
+	 * Get all keys for all records in this source matching the specified key
+	 * range, or all keys in this source if no argument is provided.
+	 * @param {IDBValidKey | IDBKeyRange | null | undefined} [query]
+	 * @param {number | undefined} [count]
+	 */
+	getAllKeys(query, count) {
+		const req = super.target.getAllKeys(query, count);
+		return DBRequest.promisify(req);
+	}
 
-		/**
-		 * @param {IDBValidKey | IDBKeyRange} key
-		 */
-		getKey(key) {
-			const req = super.target.getKey(key);
-			return DBRequest.promisify(req);
-		}
+	/**
+	 * Get the first key in this source that matches the given key range.
+	 * @param {IDBValidKey | IDBKeyRange} key
+	 */
+	getKey(key) {
+		const req = super.target.getKey(key);
+		return DBRequest.promisify(req);
+	}
 
-		/**
-		 * @param {OpenCursorOptions | undefined} [opts]
-		 */
-		cursor(opts) {
-			const args = cursorArgs(opts);
-			const req = super.target.openCursor(...args);
-			return new ReadOnlyCursor(req);
-		}
+	/**
+	 * Open a cursor.
+	 * @param {OpenCursorOptions | undefined} [opts]
+	 */
+	cursor(opts) {
+		const args = cursorArgs(opts);
+		const req = super.target.openCursor(...args);
+		return new ReadOnlyCursor(req);
+	}
 
-		/**
-		 * @param {OpenCursorOptions | undefined} [opts]
-		 */
-		keyCursor(opts) {
-			const args = cursorArgs(opts);
-			const req = super.target.openKeyCursor(...args);
-			return new ReadOnlyKeyCursor(req);
-		}
+	/**
+	 * Open a read-only key cursor.
+	 * @param {OpenCursorOptions | undefined} [opts]
+	 */
+	keyCursor(opts) {
+		const args = cursorArgs(opts);
+		const req = super.target.openKeyCursor(...args);
+		return new ReadOnlyKeyCursor(req);
+	}
 
-		[Symbol.asyncIterator]() { return this.cursor(); }
-	};
+	[Symbol.asyncIterator]() { return this.cursor(); }
 }
