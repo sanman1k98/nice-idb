@@ -8,7 +8,7 @@ import { Wrapper } from './wrap.js';
  * @template {C extends Wrapper<infer U> ? U : never} T
  * @param {Constructor<C> & Pick<typeof Wrapper, 'assertWrappable'> & { mode: IDBTransactionMode }} Class
  */
-export function bindWrap(Class) {
+export function bindStaticWrap(Class) {
 	/** @param {T} tx */
 	return function (tx) {
 		Class.assertWrappable(tx);
@@ -38,7 +38,7 @@ export class ReadOnlyTransaction extends Wrapper {
 	 * Wrap an existing IDBTransaction instance.
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/** @type {Promise<Event>} @readonly */ #finish;
 	/** @type {Event | undefined} */ #event;
@@ -278,7 +278,7 @@ export class ReadWriteTransaction extends ReadOnlyTransaction {
 	/**
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * @override
@@ -300,7 +300,7 @@ export class UpgradeTransaction extends ReadWriteTransaction {
 	/**
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * Create and return a new object store.

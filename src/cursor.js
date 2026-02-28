@@ -7,7 +7,7 @@ import { Wrapper } from './wrap';
  * @template {C extends Wrapper<infer U> ? U : never} T
  * @param {Constructor<C> & Pick<typeof CursorWrapper, 'assertWrappable' | 'mode'>} Class
  */
-function createWrap(Class) {
+function bindStaticWrap(Class) {
 	/** @param {T} req */
 	return function (req) {
 		Class.assertWrappable(req);
@@ -255,7 +255,7 @@ export class ReadOnlyKeyCursor extends CursorWrapper {
 	 * Wrap an existing request for a cursor.
 	 * @override
 	 */
-	static wrap = createWrap(this);
+	static wrap = bindStaticWrap(this);
 }
 
 /**
@@ -273,7 +273,7 @@ export class ReadOnlyCursor extends CursorWrapper {
 	 * Wrap an existing request for a cursor.
 	 * @override
 	 */
-	static wrap = createWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * The value of record at the cursor's position.
@@ -296,7 +296,7 @@ export class ReadWriteCursor extends ReadOnlyCursor {
 	 * Wrap an existing request for a cursor.
 	 * @override
 	 */
-	static wrap = createWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	delete() {
 		const req = super.cursor.delete();
@@ -326,7 +326,7 @@ export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor {
 	 * Wrap an existing request for a cursor.
 	 * @override
 	 */
-	static wrap = createWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * Can only be called on a cursor coming from an index.
@@ -354,7 +354,7 @@ export class ReadOnlyIndexCursor extends ReadOnlyCursor {
 	 * Wrap an existing request for a cursor.
 	 * @override
 	 */
-	static wrap = createWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * Can only be called on a cursor coming from an index.
@@ -382,7 +382,7 @@ export class ReadWriteIndexCursor extends ReadWriteCursor {
 	 * Wrap an existing request for a cursor.
 	 * @override
 	 */
-	static wrap = createWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * Can only be called on a cursor coming from an index.

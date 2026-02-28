@@ -10,7 +10,7 @@ import { cursorArgs, toStrings } from './util.js';
  * @template {C extends ReadOnlySource<infer U> ? U : never} T
  * @param {Constructor<C> & Pick<typeof ReadOnlySource, 'mode' | 'assertWrappable'>} Class
  */
-function bindWrap(Class) {
+function bindStaticWrap(Class) {
 	/** @param {T} store */
 	return function (store) {
 		Class.assertWrappable(store);
@@ -39,7 +39,7 @@ export class ReadOnlyStore extends ReadOnlySource {
 	 * Wrap an exising IDBObjectStore instance.
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * @param {string} name
@@ -60,7 +60,7 @@ export class ReadWriteStore extends ReadOnlyStore {
 	/**
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * @param {any} value
@@ -123,7 +123,7 @@ export class UpgradableStore extends ReadWriteStore {
 	/**
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * @param {string} name

@@ -8,7 +8,7 @@ import { cursorArgs } from './util.js';
  * @template {C extends ReadOnlySource<infer U> ? U : never} T
  * @param {Constructor<C> & Pick<typeof ReadOnlySource, 'mode' | 'assertWrappable'>} Class
  */
-function bindWrap(Class) {
+function bindStaticWrap(Class) {
 	/** @param {T} index */
 	return function (index) {
 		Class.assertWrappable(index);
@@ -37,7 +37,7 @@ export class ReadOnlyIndex extends ReadOnlySource {
 	 * Wrap an existing IDBIndex instance.
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * @override
@@ -70,7 +70,7 @@ export class ReadWriteIndex extends ReadOnlyIndex {
 	/**
 	 * @override
 	 */
-	static wrap = bindWrap(this);
+	static wrap = bindStaticWrap(this);
 
 	/**
 	 * @override
