@@ -22,7 +22,7 @@ import { NiceIDB } from 'nice-idb';
 const db = NiceIDB.init('library').define((version, db) => {
 	version(1, async () => {
 		// The database did not previously exist, so create object stores and indexes.
-		const store = db.createStore('books', { keyPath: 'isbn' });
+		const store = db.upgrade.createStore('books', { keyPath: 'isbn' });
 		store.createIndex('by_title', 'title', { unique: true });
 		store.createIndex('by_author', 'author');
 
@@ -43,9 +43,19 @@ const db = NiceIDB.init('library').define((version, db) => {
 			isbn: 345678,
 		});
 	});
+	version(2, () => {
+		// Version 2 introduces a new index of books by year.
+		db.upgrade.store('books').createIndex('by_year', 'year');
+	});
+	version(3, async () => {
+		// Version 3 introduces a new object store for magazines with two indexes.
+		const magazines = db.upgrade.createStore('magazines');
+		magazines.createIndex('by_publisher', 'publisher');
+		magazines.createIndex('by_frequency', 'frequency');
+	});
 });
 
-// Use the latest defined version number (1 in this case) to open a
+// Use the latest defined version number (3 in this case) to open a
 // connection to the "library" database and handle the "upgradeneeded"
 // event if fired.
 await db.latest().upgrade();
@@ -98,12 +108,9 @@ await db.latest().upgrade();
 
 	await request.catch((error) => {
 		console.assert(
-			error instanceof DOMException
-			&& error.name.includes('ConstraintError'),
+			error instanceof DOMException && error.name.includes('ConstraintError'),
 		);
-		console.error(
-			'The uniqueness constraint of the "by_title" index failed.',
-		);
+		console.error('The uniqueness constraint of the "by_title" index failed.');
 	});
 
 	tx.once('abort', () => {
