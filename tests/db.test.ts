@@ -60,10 +60,10 @@ describe('defining upgrades', () => {
 		it('will error when accessed outside of upgrade callbacks', async () => {
 			testDB = Database.init('test-db').define((version, db, tx) => {
 				expect.soft(() => db.version).toThrow('Cannot access');
-				expect.soft(() => tx.mode).toThrow('Cannot access');
+				expect.soft(() => tx.storeNames).toThrow('Cannot access');
 				version(1, () => {
 					expect.soft(db.version).toBe(1);
-					expect.soft(tx.mode).toBe('versionchange');
+					expect.soft(tx.storeNames).toBeInstanceOf(Array);
 				});
 			});
 
