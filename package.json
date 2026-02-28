@@ -45,8 +45,8 @@
 	],
 	"scripts": {
 		"lint": "eslint",
-		"build": "tsc -p tsconfig.types.json",
-		"test:browser": "vitest"
+		"typegen": "tsc -p tsconfig.types.json",
+		"test": "vitest"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^6.7.3",
