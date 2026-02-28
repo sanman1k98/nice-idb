@@ -7,13 +7,15 @@ const base = antfu({
 		indent: 'tab',
 		semi: true,
 		quotes: 'single',
-		overrides: {
-			'style/brace-style': ['error', '1tbs', { allowSingleLine: true }],
-		},
 	},
 });
 
 export default base
+	.override('antfu/stylistic/rules', {
+		rules: {
+			'style/brace-style': ['error', '1tbs', { allowSingleLine: true }],
+		},
+	})
 	.append({
 		name: 'user/generated/ignores',
 		ignores: ['./types/'],
