@@ -109,7 +109,7 @@ export class DatabaseWrapper extends Wrapper {
 	}
 
 	/**
-	 * A convenience method to create a transaction and get an object store.
+	 * A convenience method to read or write to an object store.
 	 * @overload
 	 * @param {string} name
 	 * @param {'readonly'} [mode]
