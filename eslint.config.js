@@ -16,6 +16,11 @@ export default base
 			'style/brace-style': ['error', '1tbs', { allowSingleLine: true }],
 		},
 	})
+	.override('antfu/jsdoc/rules', {
+		rules: {
+			'jsdoc/require-returns-description': ['off'],
+		},
+	})
 	.append({
 		name: 'user/generated/ignores',
 		ignores: ['./types/'],
