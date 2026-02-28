@@ -224,23 +224,6 @@ export class UpgradableDatabase extends DatabaseWrapper {
      * @type {UpgradeTransaction}
      */
     upgrade: UpgradeTransaction;
-    /**
-     * @deprecated Use `db.upgrade.createStore()` instead.
-     *
-     * Create and return a new object store.
-     * @param {string} name
-     * @param {IDBObjectStoreParameters | undefined} [opts]
-     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/createObjectStore}
-     */
-    createStore(name: string, opts?: IDBObjectStoreParameters | undefined): UpgradableStore;
-    /**
-     * @deprecated Use `db.upgrade.deleteStore()` instead.
-     *
-     * Destroy the with the given name in the connected database.
-     * @param {string} name
-     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/deleteObjectStore}
-     */
-    deleteStore(name: string): void;
 }
 /**
  * Manage connections to databases and any upgrades.
@@ -284,9 +267,9 @@ export class Database extends DatabaseWrapper {
      * // Upgrade to the latest version
      * await db.latest().upgrade()
      *
-     * @param {(register: RegisterUpgrade, db: UpgradableDatabase, tx: UpgradeTransaction) => void} versions
+     * @param {(register: RegisterUpgrade, db: UpgradableDatabase) => void} versions
      */
-    define(versions: (register: RegisterUpgrade, db: UpgradableDatabase, tx: UpgradeTransaction) => void): this;
+    define(versions: (register: RegisterUpgrade, db: UpgradableDatabase) => void): this;
     /**
      * Can be used to specify the last defined version to open.
      *
@@ -371,6 +354,5 @@ import { ReadWriteTransaction } from './tx.js';
 import { ReadOnlyStore } from './store.js';
 import { ReadWriteStore } from './store.js';
 import { UpgradeTransaction } from './tx.js';
-import { UpgradableStore } from './store.js';
 import type { RegisterUpgrade } from '#types';
 //# sourceMappingURL=db.d.ts.map

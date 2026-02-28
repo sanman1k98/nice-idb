@@ -82,7 +82,6 @@ export interface RegisterUpgrade {
 
 export interface UpgradeState {
 	db: VirtualInstance<UpgradableDatabase>;
-	tx: VirtualInstance<UpgradeTransaction>;
 	upgrades: Map<number, UpgradeCallback>;
 	latest: number;
 }

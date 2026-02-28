@@ -1,6 +1,6 @@
 /** @import { RegisterUpgrade, UpgradeCallback, UpgradeState } from '#types' */
 import { DBRequest } from './req.js';
-import { ReadOnlyStore, ReadWriteStore, UpgradableStore } from './store.js';
+import { ReadOnlyStore, ReadWriteStore } from './store.js';
 import { ReadOnlyTransaction, ReadWriteTransaction, UpgradeTransaction } from './tx.js';
 import { toStrings } from './util.js';
 import { VirtualInstance, Wrapper } from './wrap.js';
@@ -330,30 +330,6 @@ export class UpgradableDatabase extends DatabaseWrapper {
 			/** @type {IDBTransaction} */ (req.transaction),
 		);
 	}
-
-	/**
-	 * @deprecated Use `db.upgrade.createStore()` instead.
-	 *
-	 * Create and return a new object store.
-	 * @param {string} name
-	 * @param {IDBObjectStoreParameters | undefined} [opts]
-	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/createObjectStore}
-	 */
-	createStore(name, opts) {
-		const store = super.target.createObjectStore(name, opts);
-		return new UpgradableStore(store);
-	}
-
-	/**
-	 * @deprecated Use `db.upgrade.deleteStore()` instead.
-	 *
-	 * Destroy the with the given name in the connected database.
-	 * @param {string} name
-	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/deleteObjectStore}
-	 */
-	deleteStore(name) {
-		return super.target.deleteObjectStore(name);
-	}
 }
 
 class Upgrader {
@@ -515,7 +491,7 @@ export class Database extends DatabaseWrapper {
 	 * // Upgrade to the latest version
 	 * await db.latest().upgrade()
 	 *
-	 * @param {(register: RegisterUpgrade, db: UpgradableDatabase, tx: UpgradeTransaction) => void} versions
+	 * @param {(register: RegisterUpgrade, db: UpgradableDatabase) => void} versions
 	 */
 	define(versions) {
 		if (this.#request)
@@ -540,12 +516,11 @@ export class Database extends DatabaseWrapper {
 		};
 
 		const db = VirtualInstance.defer(UpgradableDatabase);
-		const tx = VirtualInstance.defer(UpgradeTransaction);
 
 		// Collect all upgrades.
-		versions(register, db.proxy, tx.proxy);
+		versions(register, db.proxy);
 
-		this.#state = { db, tx, upgrades, latest };
+		this.#state = { db, upgrades, latest };
 		return this;
 	}
 
@@ -631,10 +606,8 @@ export class Database extends DatabaseWrapper {
 			throw new Error('UnknownEvent');
 		if (!this.#state || !target.transaction)
 			throw new Error('InvalidState');
-		const tx = new UpgradeTransaction(target.transaction);
 		const db = new UpgradableDatabase(target);
 		this.#state.db.update(db);
-		this.#state.tx.update(tx);
 	}
 
 	/**
@@ -669,7 +642,7 @@ export class Database extends DatabaseWrapper {
 			? this.#setVersion('latest')
 			: version;
 
-		const { upgrades, db, tx } = /** @type {UpgradeState} */(this.#state);
+		const { upgrades, db } = /** @type {UpgradeState} */(this.#state);
 
 		let current = await indexedDB.databases()
 			.then(dbs => dbs.find(db => db.name === this.#name))
@@ -704,7 +677,6 @@ export class Database extends DatabaseWrapper {
 		this.#request ??= indexedDB.open(this.#name, current);
 
 		db.revoke();
-		tx.revoke();
 		this.#state = undefined;
 
 		return new DBRequest(this.#request, (result) => {

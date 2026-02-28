@@ -58,16 +58,14 @@ describe('defining upgrades', () => {
 		afterEach(() => testDB!.close());
 
 		it('will error when accessed outside of upgrade callbacks', async () => {
-			testDB = Database.init('test-db').define((version, db, tx) => {
+			testDB = Database.init('test-db').define((version, db) => {
 				expect.soft(() => db.version).toThrow('Cannot access');
-				expect.soft(() => tx.storeNames).toThrow('Cannot access');
 				version(1, () => {
 					expect.soft(db.version).toBe(1);
-					expect.soft(tx.storeNames).toBeInstanceOf(Array);
 				});
 			});
 
-			expect.assertions(4);
+			expect.assertions(2);
 			await testDB.upgrade();
 		});
 	});
@@ -117,18 +115,18 @@ describe('defining upgrades', () => {
 		beforeEach(async () => deleteAllDatabases());
 
 		it('will create an upgrade tranaction for each upgrade', async () => {
-			const db = Database.init('test-db').define((version, db, tx) => {
+			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
 					expect(db.version).toBe(1);
-					tx.commit();
+					db.upgrade.commit();
 				});
 				version(2, async () => {
 					expect(db.version).toBe(2);
-					tx.commit();
+					db.upgrade.commit();
 				});
 				version(3, async () => {
 					expect(db.version).toBe(3);
-					tx.commit();
+					db.upgrade.commit();
 				});
 			});
 
@@ -153,17 +151,17 @@ describe('defining upgrades', () => {
 		});
 
 		it('supports manually committing at the end of an upgrade', async () => {
-			const db = Database.init('test-db').define((version, db, tx) => {
+			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
 					const logs = db.upgrade.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
 					await logs.add({ type: 'info', message: 'Hello, World!' });
-					tx.commit();
+					db.upgrade.commit();
 				});
 				version(2, async () => {
-					const logs = tx.store('logs');
+					const logs = db.upgrade.store('logs');
 					logs.createIndex('scopes', 'scope');
-					tx.commit();
+					db.upgrade.commit();
 				});
 			});
 
