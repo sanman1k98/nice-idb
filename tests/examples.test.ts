@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { deleteAllDatabases } from './utils.js';
 
 async function example1() {
-	const db = NiceIDB.init('library').define((version, db) => {
+	const db = NiceIDB.init('library').define((version, db, tx) => {
 		version(1, async () => {
 			// The database did not previously exist, so create object stores and indexes.
 			const store = db.createStore('books', { keyPath: 'isbn' });
@@ -29,9 +29,19 @@ async function example1() {
 				isbn: 345678,
 			});
 		});
+		version(2, () => {
+			// Version 2 introduces a new index of books by year.
+			tx.store('books').createIndex('by_year', 'year');
+		});
+		version(3, async () => {
+			// Version 3 introduces a new object store for magazines with two indexes.
+			const magazines = db.createStore('magazines');
+			magazines.createIndex('by_publisher', 'publisher');
+			magazines.createIndex('by_frequency', 'frequency');
+		});
 	});
 
-	// Use the latest defined version number (1 in this case) to open a
+	// Use the latest defined version number (3 in this case) to open a
 	// connection to the "library" database and handle the "upgradeneeded"
 	// event if fired.
 	await db.latest().upgrade();
