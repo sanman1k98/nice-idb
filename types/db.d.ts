@@ -1,14 +1,21 @@
-declare const DatabaseWrapper_base: {
-    new (): import("#types").WrapperClass<IDBDatabase>;
-    new (target: IDBDatabase): import("#types").WrapperClass<IDBDatabase>;
-    wrap(target: objectT): import("#types").WrapperClass<object>;
-};
-export class DatabaseWrapper extends DatabaseWrapper_base {
+/**
+ * @extends {Wrapper<IDBDatabase>}
+ */
+export class DatabaseWrapper extends Wrapper<IDBDatabase> {
     /**
-     * Wrap an existing IDBDatabase instance.
      * @override
+     * @protected
      */
-    static override wrap: (this: Constructor<DatabaseWrapper>, target: IDBDatabase) => DatabaseWrapper;
+    protected static override Target: {
+        new (): IDBDatabase;
+        prototype: IDBDatabase;
+    };
+    /**
+     * Wrap an existing database connection.
+     * @override
+     * @param {IDBDatabase} db
+     */
+    static override wrap(db: IDBDatabase): DatabaseWrapper;
     /**
      * Compares two values as keys to determine equality and ordering for IndexedDB operations.
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/cmp}
@@ -25,6 +32,7 @@ export class DatabaseWrapper extends DatabaseWrapper_base {
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/deleteDatabase}
      */
     static delete(name: string): DBRequest<IDBOpenDBRequest, IDBDatabase, never>;
+    constructor(target?: IDBDatabase | undefined);
     /**
      * Name of the connected database.
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/name}
@@ -68,7 +76,7 @@ export class DatabaseWrapper extends DatabaseWrapper_base {
      */
     transaction(stores: string | string[], mode: "readwrite", opts?: IDBTransactionOptions | undefined): ReadWriteTransaction;
     /**
-     * A convenience method to create a transaction and get an object store.
+     * A convenience method to read or write to an object store.
      * @overload
      * @param {string} name
      * @param {'readonly'} [mode]
@@ -184,6 +192,13 @@ export class DatabaseWrapper extends DatabaseWrapper_base {
  * Wraps an `IDBDatabase` for the the "upgradeneeded" event handler.
  */
 export class UpgradableDatabase extends DatabaseWrapper {
+    /**
+     * Wrap an IDBDatabase within an "upgrade transaction" that can be used to
+     * modify the structure of the underlying database.
+     * @override
+     * @param {IDBDatabase} db
+     */
+    static override wrap(db: IDBDatabase): UpgradableDatabase;
     /**
      * Create and return a new object store.
      * @param {string} name
@@ -314,12 +329,12 @@ export class Database extends DatabaseWrapper {
     #private;
 }
 export default Database;
+import { Wrapper } from './wrap.js';
 import { DBRequest } from './req.js';
 import { ReadOnlyTransaction } from './tx.js';
 import { ReadWriteTransaction } from './tx.js';
 import { ReadOnlyStore } from './store.js';
 import { ReadWriteStore } from './store.js';
-import type { Constructor } from '#types';
 import { UpgradableStore } from './store.js';
 import type { RegisterUpgrade } from '#types';
 import { UpgradeTransaction } from './tx.js';

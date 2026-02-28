@@ -1,41 +1,21 @@
-declare const ReadOnlyIndex_base: {
-    new (): {
-        get name(): string;
-        get keyPath(): string | string[] | null;
-        count(key?: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<number>, number, never>;
-        get(query: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<any>, any, never>;
-        getAll(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): import("./req.js").DBRequest<IDBRequest<any[]>, any[], never>;
-        getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): import("./req.js").DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
-        getKey(key: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
-        cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
-        [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
-        get target(): IDBIndex;
-        wrap(target: IDBIndex): /*elided*/ any;
+/**
+ * @extends {ReadOnlySource<IDBIndex>}
+ */
+export class ReadOnlyIndex extends ReadOnlySource<IDBIndex> {
+    /**
+     * @override
+     * @protected
+     */
+    protected static override Target: {
+        new (): IDBIndex;
+        prototype: IDBIndex;
     };
-    new (target: IDBIndex): {
-        get name(): string;
-        get keyPath(): string | string[] | null;
-        count(key?: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<number>, number, never>;
-        get(query: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<any>, any, never>;
-        getAll(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): import("./req.js").DBRequest<IDBRequest<any[]>, any[], never>;
-        getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): import("./req.js").DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
-        getKey(key: IDBValidKey | IDBKeyRange): import("./req.js").DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
-        cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
-        [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
-        get target(): IDBIndex;
-        wrap(target: IDBIndex): /*elided*/ any;
-    };
-    mode: IDBTransactionMode;
-    wrap(target: objectT): import("#types").WrapperClass<object>;
-};
-export class ReadOnlyIndex extends ReadOnlyIndex_base {
     /**
      * Wrap an existing IDBIndex instance.
      * @override
      */
-    static override wrap: (target: IDBIndex) => ReadOnlyIndex;
+    static override wrap: (index: IDBIndex) => ReadOnlyIndex;
+    constructor(target?: IDBIndex | undefined);
     get multiEntry(): boolean;
     get unique(): boolean;
     /**
@@ -53,15 +33,15 @@ export class ReadWriteIndex extends ReadOnlyIndex {
     /**
      * @override
      */
-    static override wrap: (target: IDBIndex) => ReadWriteIndex;
+    static override wrap: (index: IDBIndex) => ReadWriteIndex;
     /**
      * @override
      * @param {OpenCursorOptions} [opts]
      */
     override cursor(opts?: OpenCursorOptions): ReadWriteIndexCursor;
 }
-export const readonly: (target: IDBIndex) => ReadOnlyIndex;
-export const readwrite: (target: IDBIndex) => ReadWriteIndex;
+export function readonly(index: IDBIndex): ReadOnlyIndex;
+export function readwrite(index: IDBIndex): ReadWriteIndex;
 export { readwrite as versionchange };
 declare namespace _default {
     export { readonly };
@@ -69,6 +49,7 @@ declare namespace _default {
     export { readwrite as versionchange };
 }
 export default _default;
+import { ReadOnlySource } from './source.js';
 import type { OpenCursorOptions } from '#types';
 import { ReadOnlyIndexCursor } from './cursor.js';
 import { ReadOnlyIndexKeyCursor } from './cursor.js';

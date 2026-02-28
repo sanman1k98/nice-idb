@@ -1,24 +1,193 @@
-declare const ReadOnlyKeyCursor_base: {
-    new (): import("./types").WrapperClass<IDBRequest<any>>;
-    new (target: IDBRequest<any>): import("./types").WrapperClass<IDBRequest<any>>;
-    wrap(target: objectT): import("./types").WrapperClass<object>;
-};
 /**
- * @implements {AsyncIterableIterator<ReadOnlyKeyCursor, null>}
+ * @implements {AsyncIterableIterator<ReadOnlyKeyCursor>}
+ * @extends {CursorWrapper<IDBCursor>}
  */
-export class ReadOnlyKeyCursor extends ReadOnlyKeyCursor_base implements AsyncIterableIterator<ReadOnlyKeyCursor, null> {
+export class ReadOnlyKeyCursor extends CursorWrapper<IDBCursor> implements AsyncIterableIterator<ReadOnlyKeyCursor> {
     /**
-     * @overload
-     * @param {IDBRequest<IDBCursor | null>} request
+     * Wrap an existing request for a cursor.
+     * @override
+     */
+    static override wrap: (req: IDBRequest<IDBCursor | null>) => ReadOnlyKeyCursor;
+    /**
+     * @param {IDBRequest<C | null>} request
      */
     constructor(request: IDBRequest<IDBCursor | null>);
+}
+/**
+ * @implements {AsyncIterableIterator<ReadOnlyCursor>}
+ * @extends {CursorWrapper<IDBCursorWithValue>}
+ */
+export class ReadOnlyCursor extends CursorWrapper<IDBCursorWithValue> implements AsyncIterableIterator<ReadOnlyCursor> {
     /**
-     * @overload
-     * @param {IDBRequest<IDBCursorWithValue | null>} request
+     * @override
+     * @protected
+     */
+    protected static override Cursor: {
+        new (): IDBCursorWithValue;
+        prototype: IDBCursorWithValue;
+    };
+    /**
+     * Wrap an existing request for a cursor.
+     * @override
+     */
+    static override wrap: (req: IDBRequest<IDBCursorWithValue | null>) => ReadOnlyCursor;
+    /**
+     * @param {IDBRequest<C | null>} request
      */
     constructor(request: IDBRequest<IDBCursorWithValue | null>);
-    /** @type {IDBCursor} */
-    get _cursor(): IDBCursor;
+    /**
+     * The value of record at the cursor's position.
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursorWithValue/value}
+     */
+    get value(): any;
+}
+/**
+ * @implements {AsyncIterableIterator<ReadWriteCursor>}
+ */
+export class ReadWriteCursor extends ReadOnlyCursor implements AsyncIterableIterator<ReadWriteCursor> {
+    /**
+     * Wrap an existing request for a cursor.
+     * @override
+     */
+    static override wrap: (req: IDBRequest<IDBCursorWithValue | null>) => ReadWriteCursor;
+    delete(): DBRequest<IDBRequest<undefined>, undefined, never>;
+    /**
+     * @param {any} value
+     */
+    update(value: any): DBRequest<IDBRequest<IDBValidKey>, IDBValidKey, never>;
+}
+/**
+ * @implements {AsyncIterableIterator<ReadOnlyIndexKeyCursor>}
+ */
+export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor implements AsyncIterableIterator<ReadOnlyIndexKeyCursor> {
+    /**
+     * @override
+     * @protected
+     */
+    protected static override Source: {
+        new (): IDBIndex;
+        prototype: IDBIndex;
+    };
+    /**
+     * Wrap an existing request for a cursor.
+     * @override
+     */
+    static override wrap: (req: IDBRequest<IDBCursor | null>) => ReadOnlyIndexKeyCursor;
+    /**
+     * Can only be called on a cursor coming from an index.
+     * @param {IDBValidKey} key
+     * @param {IDBValidKey} primaryKey
+     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+     */
+    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
+}
+/**
+ * @implements {AsyncIterableIterator<ReadOnlyIndexCursor>}
+ */
+export class ReadOnlyIndexCursor extends ReadOnlyCursor implements AsyncIterableIterator<ReadOnlyIndexCursor> {
+    /**
+     * @override
+     * @protected
+     */
+    protected static override Source: {
+        new (): IDBIndex;
+        prototype: IDBIndex;
+    };
+    /**
+     * Wrap an existing request for a cursor.
+     * @override
+     */
+    static override wrap: (req: IDBRequest<IDBCursorWithValue | null>) => ReadOnlyIndexCursor;
+    /**
+     * Can only be called on a cursor coming from an index.
+     * @param {IDBValidKey} key
+     * @param {IDBValidKey} primaryKey
+     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+     */
+    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
+}
+/**
+ * @implements {AsyncIterableIterator<ReadWriteIndexCursor>}
+ */
+export class ReadWriteIndexCursor extends ReadWriteCursor implements AsyncIterableIterator<ReadWriteIndexCursor> {
+    /**
+     * @override
+     * @protected
+     */
+    protected static override Source: {
+        new (): IDBIndex;
+        prototype: IDBIndex;
+    };
+    /**
+     * Wrap an existing request for a cursor.
+     * @override
+     */
+    static override wrap: (req: IDBRequest<IDBCursorWithValue | null>) => ReadWriteIndexCursor;
+    /**
+     * Can only be called on a cursor coming from an index.
+     * @param {IDBValidKey} key
+     * @param {IDBValidKey} primaryKey
+     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
+     */
+    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
+}
+export namespace Cursor {
+    import readonlyKey = ReadOnlyKeyCursor.wrap;
+    export { readonlyKey };
+    import readonly = ReadOnlyCursor.wrap;
+    export { readonly };
+    import readwrite = ReadWriteCursor.wrap;
+    export { readwrite };
+}
+export namespace IndexCursor {
+    import readonlyKey_1 = ReadOnlyIndexKeyCursor.wrap;
+    export { readonlyKey_1 as readonlyKey };
+    import readonly_1 = ReadOnlyIndexCursor.wrap;
+    export { readonly_1 as readonly };
+    import readwrite_1 = ReadWriteIndexCursor.wrap;
+    export { readwrite_1 as readwrite };
+}
+/**
+ *
+ * @template {IDBCursor} C
+ * @extends {Wrapper<IDBRequest<C | null>>}
+ */
+declare class CursorWrapper<C extends IDBCursor> extends Wrapper<IDBRequest<C | null>> {
+    /**
+     * @type {'readonly' | 'readwrite'}
+     */
+    static mode: "readonly" | "readwrite";
+    /**
+     * @override
+     * @protected
+     */
+    protected static override Target: {
+        new (): IDBRequest;
+        prototype: IDBRequest;
+    };
+    /**
+     * @protected
+     * @type {Constructor<IDBObjectStore> | Constructor<IDBIndex>}
+     */
+    protected static Source: Constructor<IDBObjectStore> | Constructor<IDBIndex>;
+    /**
+     * @protected
+     * @type {Constructor<IDBCursor>}
+     */
+    protected static Cursor: Constructor<IDBCursor>;
+    /**
+     * @param {unknown} result
+     * @returns {arg is InstanceType<typeof this.Cursor>}
+     */
+    static "__#private@#isCursorable"(result: unknown): arg is InstanceType<typeof this.Cursor>;
+    /**
+     * @param {IDBRequest<C | null>} request
+     */
+    constructor(request: IDBRequest<C | null>);
+    /**
+     * @protected
+     */
+    protected get cursor(): C;
     /**
      * Will be true when the underlying request's state is "pending".
      * @type {boolean}
@@ -28,21 +197,33 @@ export class ReadOnlyKeyCursor extends ReadOnlyKeyCursor_base implements AsyncIt
      * Can be used as the condition for a while-loop.
      */
     get done(): boolean;
+    /**
+     * The direction of traversal of the cursor.
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursor/direction}
+     */
     get dir(): IDBCursorDirection;
+    /**
+     * The key for the record at the cursor's position.
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursor/key}
+     */
     get key(): IDBValidKey;
+    /**
+     * The current effective key.
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBCursor/primaryKey}
+     */
     get primaryKey(): IDBValidKey;
     /**
      * @internal
-     * @param {Event & { target: IDBRequest<IDBCursor | null> }} event
+     * @param {Event & { target: IDBRequest<C | null> }} event
      */
     handleEvent({ target }: Event & {
-        target: IDBRequest<IDBCursor | null>;
+        target: IDBRequest<C | null>;
     }): void;
     /**
-     * @internal
+     * @protected
      * @type {Promise<IDBCursor | null>}
      */
-    get _iteration(): Promise<IDBCursor | null>;
+    protected get iteration(): Promise<IDBCursor | null>;
     /**
      * @param {number} count
      */
@@ -83,78 +264,17 @@ export class ReadOnlyKeyCursor extends ReadOnlyKeyCursor_base implements AsyncIt
      */
     next(): Promise<IteratorResult<this, null>>;
     /**
-     * @returns {Promise<IteratorReturnResult<null>>} Done iteration.
+     * @template T
+     * @param {T | null} value
+     * @returns {Promise<IteratorReturnResult<T | null>>}
      */
-    return(value?: null): Promise<IteratorReturnResult<null>>;
+    return<T>(value?: T | null): Promise<IteratorReturnResult<T | null>>;
     [Symbol.asyncIterator](): this;
     [Symbol.asyncDispose](): void;
     #private;
 }
-/**
- * @implements {AsyncIterableIterator<ReadOnlyCursor, null>}
- */
-export class ReadOnlyCursor extends ReadOnlyKeyCursor implements AsyncIterableIterator<ReadOnlyCursor, null> {
-    get value(): any;
-}
-/**
- * @implements {AsyncIterableIterator<ReadWriteCursor, null>}
- */
-export class ReadWriteCursor extends ReadOnlyCursor implements AsyncIterableIterator<ReadWriteCursor, null> {
-    delete(): DBRequest<IDBRequest<undefined>, undefined, never>;
-    /**
-     * @param {any} value
-     */
-    update(value: any): DBRequest<IDBRequest<IDBValidKey>, IDBValidKey, never>;
-}
-/**
- * @implements {AsyncIterableIterator<ReadOnlyIndexKeyCursor, null>}
- */
-export class ReadOnlyIndexKeyCursor extends ReadOnlyKeyCursor implements AsyncIterableIterator<ReadOnlyIndexKeyCursor, null> {
-    /**
-     * Can only be called on a cursor coming from an index.
-     * @param {IDBValidKey} key
-     * @param {IDBValidKey} primaryKey
-     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-     */
-    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
-}
-/**
- * @implements {AsyncIterableIterator<ReadOnlyIndexCursor, null>}
- */
-export class ReadOnlyIndexCursor extends ReadOnlyCursor implements AsyncIterableIterator<ReadOnlyIndexCursor, null> {
-    /**
-     * Can only be called on a cursor coming from an index.
-     * @param {IDBValidKey} key
-     * @param {IDBValidKey} primaryKey
-     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-     */
-    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
-}
-/**
- * @implements {AsyncIterableIterator<ReadWriteIndexCursor, null>}
- */
-export class ReadWriteIndexCursor extends ReadWriteCursor implements AsyncIterableIterator<ReadWriteIndexCursor, null> {
-    /**
-     * Can only be called on a cursor coming from an index.
-     * @param {IDBValidKey} key
-     * @param {IDBValidKey} primaryKey
-     * @see {@link https://w3c.github.io/IndexedDB/#dom-idbcursor-continueprimarykey}
-     */
-    continuePrimaryKey(key: IDBValidKey, primaryKey: IDBValidKey): Promise<this>;
-}
-export namespace Cursor {
-    function readonlyKey(request: IDBRequest<IDBCursor | null>): ReadOnlyKeyCursor;
-    function readonly(request: IDBRequest<IDBCursorWithValue | null>): ReadOnlyCursor;
-    function readwrite(request: IDBRequest<IDBCursorWithValue | null>): ReadWriteCursor;
-}
-export namespace IndexCursor {
-    export function readonlyKey_1(request: IDBRequest<IDBCursor | null>): ReadOnlyIndexKeyCursor;
-    export { readonlyKey_1 as readonlyKey };
-    export function readonly_1(request: IDBRequest<IDBCursorWithValue | null>): ReadOnlyIndexCursor;
-    export { readonly_1 as readonly };
-    export function readwrite_1(request: IDBRequest<IDBCursorWithValue | null>): ReadWriteIndexCursor;
-    export { readwrite_1 as readwrite };
-}
 import { DBRequest } from './req';
+import { Wrapper } from './wrap';
+import type { Constructor } from '#types';
 export {};
 //# sourceMappingURL=cursor.d.ts.map

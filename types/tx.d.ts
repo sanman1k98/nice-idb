@@ -1,20 +1,24 @@
 /**
- * @template {WrapperClass<IDBTransaction>} C
- * @template {C extends WrapperClass<infer U> ? U : never} T
- * @param {Constructor<C> & { mode: IDBTransactionMode }} Class
+ * @template {Wrapper<IDBTransaction>} C
+ * @template {C extends Wrapper<infer U> ? U : never} T
+ * @param {Constructor<C> & Pick<typeof Wrapper, 'assertWrappable'> & { mode: IDBTransactionMode }} Class
  */
-export function createModeGuardedWrap<C extends WrapperClass<IDBTransaction>, T extends C extends WrapperClass<infer U> ? U : never>(Class: Constructor<C> & {
+export function bindWrap<C extends Wrapper<IDBTransaction>, T extends C extends Wrapper<infer U> ? U : never>(Class: Constructor<C> & Pick<typeof Wrapper, "assertWrappable"> & {
     mode: IDBTransactionMode;
-}): (/** @type {T} */ target: T) => C;
-declare const ReadOnlyTransaction_base: {
-    new (): WrapperClass<IDBTransaction>;
-    new (target: IDBTransaction): WrapperClass<IDBTransaction>;
-    wrap(target: objectT): WrapperClass<object>;
-};
+}): (tx: T) => C;
 /**
  * @implements {Disposable}
+ * @extends {Wrapper<IDBTransaction>}
  */
-export class ReadOnlyTransaction extends ReadOnlyTransaction_base implements Disposable {
+export class ReadOnlyTransaction extends Wrapper<IDBTransaction> implements Disposable {
+    /**
+     * @protected
+     * @override
+     */
+    protected static override Target: {
+        new (): IDBTransaction;
+        prototype: IDBTransaction;
+    };
     /**
      * @type {IDBTransactionMode}
      */
@@ -23,14 +27,13 @@ export class ReadOnlyTransaction extends ReadOnlyTransaction_base implements Dis
      * Wrap an existing IDBTransaction instance.
      * @override
      */
-    static override wrap: (target: IDBTransaction) => ReadOnlyTransaction;
+    static override wrap: (tx: IDBTransaction) => ReadOnlyTransaction;
     /**
-     * @param {IDBTransaction} tx - The transaction instance to wrap.
+     * @param {IDBTransaction} tx
      */
     constructor(tx: IDBTransaction);
     get error(): DOMException | null;
     get durability(): IDBTransactionDurability;
-    get mode(): IDBTransactionMode;
     /**
      * @returns {boolean} Returns `true` when the transaction has either committed or aborted.
      */
@@ -170,7 +173,7 @@ export class ReadWriteTransaction extends ReadOnlyTransaction {
     /**
      * @override
      */
-    static override wrap: (target: IDBTransaction) => ReadWriteTransaction;
+    static override wrap: (tx: IDBTransaction) => ReadWriteTransaction;
     /**
      * @override
      * @param {string} name
@@ -181,7 +184,7 @@ export class UpgradeTransaction extends ReadWriteTransaction {
     /**
      * @override
      */
-    static override wrap: (target: IDBTransaction) => UpgradeTransaction;
+    static override wrap: (tx: IDBTransaction) => UpgradeTransaction;
     /**
      * @override
      * @param {string} name
@@ -194,12 +197,12 @@ declare namespace _default {
     export { versionchange };
 }
 export default _default;
-import type { WrapperClass } from '#types';
+import { Wrapper } from './wrap.js';
 import type { Constructor } from '#types';
 import { ReadOnlyStore } from './store.js';
 import { ReadWriteStore } from './store.js';
 import { UpgradableStore } from './store.js';
-declare function readonly(target: IDBTransaction): ReadOnlyTransaction;
-declare function readwrite(target: IDBTransaction): ReadWriteTransaction;
-declare function versionchange(target: IDBTransaction): UpgradeTransaction;
+declare function readonly(tx: IDBTransaction): ReadOnlyTransaction;
+declare function readwrite(tx: IDBTransaction): ReadWriteTransaction;
+declare function versionchange(tx: IDBTransaction): UpgradeTransaction;
 //# sourceMappingURL=tx.d.ts.map

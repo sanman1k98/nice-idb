@@ -1,8 +1,3 @@
-declare const DBRequest_base: {
-    new (): import("./types").WrapperClass<IDBRequest<any>>;
-    new (target: IDBRequest<any>): import("./types").WrapperClass<IDBRequest<any>>;
-    wrap(target: objectT): import("./types").WrapperClass<object>;
-};
 /**
  * A "thenable" wrapper for `IDBRequest` objects. Use await to get the
  * underlying request's `result` property.
@@ -42,8 +37,17 @@ declare const DBRequest_base: {
  * @template [TResolved = R['result']]
  * @template [TRejected = never]
  * @implements {PromiseLike<TResolved | TRejected>}
+ * @extends {Wrapper<IDBRequest>}
  */
-export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected = never> extends DBRequest_base implements PromiseLike<TResolved | TRejected> {
+export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected = never> extends Wrapper<IDBRequest<any>> implements PromiseLike<TResolved | TRejected> {
+    /**
+     * @override
+     * @protected
+     */
+    protected static override Target: {
+        new (): IDBRequest;
+        prototype: IDBRequest;
+    };
     /**
      * Promisify an `IDBRequest` to await its result or reject if it errors.
      * @template {IDBRequest} R
@@ -90,7 +94,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
         error: any;
     }>;
     /**
-     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
      * @template {keyof M} K
      * @overload
      * @param {K} type
@@ -98,7 +102,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      * @param {boolean | AddEventListenerOptions} [options]
      * @returns {this}
      */
-    on<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
+    on<M extends TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
     /**
      * @overload
      * @param {string} type
@@ -108,7 +112,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      */
     on(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): this;
     /**
-     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
      * @template {keyof M} K
      * @overload
      * @param {K} type
@@ -116,7 +120,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      * @param {boolean | EventListenerOptions} [options]
      * @returns {this}
      */
-    off<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | EventListenerOptions | undefined): this;
+    off<M extends TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | EventListenerOptions | undefined): this;
     /**
      * @overload
      * @param {string} type
@@ -126,7 +130,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      */
     off(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): this;
     /**
-     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
      * @template {keyof M} K
      * @overload
      * @param {K} type
@@ -134,7 +138,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      * @param {boolean | AddEventListenerOptions} [options]
      * @returns {this}
      */
-    once<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
+    once<M extends TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | AddEventListenerOptions | undefined): this;
     /**
      * @overload
      * @param {string} type
@@ -149,7 +153,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      */
     emit(event: Event | string, init?: EventInit): boolean;
     /**
-     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
      * @template {keyof M} K
      * @overload
      * @param {K} type
@@ -157,7 +161,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      * @param {boolean | AddEventListenerOptions} [options]
      * @returns {void}
      */
-    addEventListener<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | AddEventListenerOptions | undefined): void;
+    addEventListener<M extends TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | AddEventListenerOptions | undefined): void;
     /**
      * @overload
      * @param {string} type
@@ -167,7 +171,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      */
     addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void;
     /**
-     * @template {R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
+     * @template {TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap} M
      * @template {keyof M} K
      * @overload
      * @param {K} type
@@ -175,7 +179,7 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
      * @param {boolean | EventListenerOptions} [options]
      * @returns {void}
      */
-    removeEventListener<M extends R extends IDBOpenDBRequest ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | EventListenerOptions | undefined): void;
+    removeEventListener<M extends TResolved extends IDBDatabase ? IDBOpenDBRequestEventMap : IDBRequestEventMap, K extends keyof M>(type: K, listener: (this: R, ev: M[K]) => any, options?: boolean | EventListenerOptions | undefined): void;
     /**
      * @overload
      * @param {string} type
@@ -191,4 +195,5 @@ export class DBRequest<R extends IDBRequest, TResolved = R["result"], TRejected 
     #private;
 }
 export default DBRequest;
+import { Wrapper } from './wrap';
 //# sourceMappingURL=req.d.ts.map

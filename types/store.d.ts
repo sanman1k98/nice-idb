@@ -1,41 +1,21 @@
-declare const ReadOnlyStore_base: {
-    new (): {
-        get name(): string;
-        get keyPath(): string | string[] | null;
-        count(key?: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<number>, number, never>;
-        get(query: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<any>, any, never>;
-        getAll(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): DBRequest<IDBRequest<any[]>, any[], never>;
-        getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
-        getKey(key: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
-        cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
-        [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
-        get target(): IDBObjectStore;
-        wrap(target: IDBObjectStore): /*elided*/ any;
+/**
+ * @extends {ReadOnlySource<IDBObjectStore>}
+ */
+export class ReadOnlyStore extends ReadOnlySource<IDBObjectStore> {
+    /**
+     * @override
+     * @protected
+     */
+    protected static override Target: {
+        new (): IDBObjectStore;
+        prototype: IDBObjectStore;
     };
-    new (target: IDBObjectStore): {
-        get name(): string;
-        get keyPath(): string | string[] | null;
-        count(key?: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<number>, number, never>;
-        get(query: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<any>, any, never>;
-        getAll(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): DBRequest<IDBRequest<any[]>, any[], never>;
-        getAllKeys(query?: IDBValidKey | IDBKeyRange | null | undefined, count?: number | undefined): DBRequest<IDBRequest<IDBValidKey[]>, IDBValidKey[], never>;
-        getKey(key: IDBValidKey | IDBKeyRange): DBRequest<IDBRequest<IDBValidKey | undefined>, IDBValidKey | undefined, never>;
-        cursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyCursor;
-        keyCursor(opts?: OpenCursorOptions | undefined): import("./cursor.js").ReadOnlyKeyCursor;
-        [Symbol.asyncIterator](): import("./cursor.js").ReadOnlyCursor;
-        get target(): IDBObjectStore;
-        wrap(target: IDBObjectStore): /*elided*/ any;
-    };
-    mode: IDBTransactionMode;
-    wrap(target: objectT): import("#types").WrapperClass<object>;
-};
-export class ReadOnlyStore extends ReadOnlyStore_base {
     /**
      * Wrap an exising IDBObjectStore instance.
      * @override
      */
-    static override wrap: (target: IDBObjectStore) => ReadOnlyStore;
+    static override wrap: (store: IDBObjectStore) => ReadOnlyStore;
+    constructor(target?: IDBObjectStore | undefined);
     get autoIncrement(): boolean;
     get indexNames(): readonly string[];
     /**
@@ -47,7 +27,7 @@ export class ReadWriteStore extends ReadOnlyStore {
     /**
      * @override
      */
-    static override wrap: (target: IDBObjectStore) => ReadWriteStore;
+    static override wrap: (store: IDBObjectStore) => ReadWriteStore;
     /**
      * @param {any} value
      * @param {IDBValidKey | undefined} [key]
@@ -78,7 +58,7 @@ export class UpgradableStore extends ReadWriteStore {
     /**
      * @override
      */
-    static override wrap: (target: IDBObjectStore) => UpgradableStore;
+    static override wrap: (store: IDBObjectStore) => UpgradableStore;
     /**
      * @param {string} name
      * @param {string | string[]} keyPath
@@ -90,18 +70,19 @@ export class UpgradableStore extends ReadWriteStore {
      */
     deleteIndex(name: string): void;
 }
-export const readonly: (target: IDBObjectStore) => ReadOnlyStore;
-export const readwrite: (target: IDBObjectStore) => ReadWriteStore;
-export const versionchange: (target: IDBObjectStore) => UpgradableStore;
+export function readonly(store: IDBObjectStore): ReadOnlyStore;
+export function readwrite(store: IDBObjectStore): ReadWriteStore;
+export function versionchange(store: IDBObjectStore): UpgradableStore;
 declare namespace _default {
     export { readonly };
     export { readwrite };
     export { versionchange };
 }
 export default _default;
+import { ReadOnlySource } from './source.js';
+import { ReadOnlyIndex } from './idx.js';
 import { DBRequest } from './req.js';
 import type { OpenCursorOptions } from '#types';
-import { ReadOnlyIndex } from './idx.js';
 import { ReadWriteCursor } from './cursor.js';
 import { ReadWriteIndex } from './idx.js';
 //# sourceMappingURL=store.d.ts.map
