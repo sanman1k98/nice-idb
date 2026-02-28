@@ -301,7 +301,7 @@ export class UpgradableDatabase extends DatabaseWrapper {
 	/**
 	 * Create and return a new object store.
 	 * @param {string} name
-	 * @param {IDBObjectStoreParameters | undefined} opts
+	 * @param {IDBObjectStoreParameters | undefined} [opts]
 	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/createObjectStore}
 	 */
 	createStore(name, opts) {
