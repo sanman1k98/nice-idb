@@ -12,18 +12,9 @@ export class DatabaseWrapper extends Wrapper {
 	/**
 	 * @override
 	 * @protected
+	 * @type {typeof IDBDatabase | typeof IDBOpenDBRequest}
 	 */
 	static Target = IDBDatabase;
-
-	/**
-	 * Wrap an existing database connection.
-	 * @override
-	 * @param {IDBDatabase} db
-	 */
-	static wrap(db) {
-		super.assertWrappable(db);
-		return new DatabaseWrapper(db);
-	}
 
 	/**
 	 * Name of the connected database.
@@ -288,17 +279,61 @@ export class DatabaseWrapper extends Wrapper {
  */
 export class UpgradableDatabase extends DatabaseWrapper {
 	/**
-	 * Wrap an IDBDatabase within an "upgrade transaction" that can be used to
-	 * modify the structure of the underlying database.
 	 * @override
-	 * @param {IDBDatabase} db
+	 * @protected
 	 */
-	static wrap(db) {
-		super.assertWrappable(db);
-		return new this(db);
+	static Target = IDBOpenDBRequest;
+
+	/**
+	 * @override
+	 * @param {unknown} value
+	 * @returns {value is IDBOpenDBRequest & { transaction: IDBTransaction }}
+	 */
+	static isWrappable(value) {
+		return value instanceof this.Target
+			&& value.transaction?.mode === 'versionchange';
 	}
 
 	/**
+	 * @override
+	 * @param {unknown} value
+	 * @returns {asserts value is IDBOpenDBRequest & { transaction: IDBTransaction }}
+	 */
+	static assertWrappable(value) {
+		if (!this.isWrappable(value))
+			throw new TypeError('Expected an open request with an active "versionchange" transaction');
+	}
+
+	/**
+	 * Accepts an open request with an active "upgrade transaction".
+	 * @override
+	 * @param {IDBOpenDBRequest} req
+	 */
+	static wrap(req) {
+		this.assertWrappable(req);
+		return new UpgradableDatabase(req);
+	}
+
+	/**
+	 * Wrapped "upgrade transaction" which can modify the structure of the
+	 * connected database.
+	 * @type {UpgradeTransaction}
+	 */
+	upgrade;
+
+	/**
+	 * @param {IDBOpenDBRequest} req A request to open a database.
+	 */
+	constructor(req) {
+		super(req.result);
+		this.upgrade = new UpgradeTransaction(
+			/** @type {IDBTransaction} */ (req.transaction),
+		);
+	}
+
+	/**
+	 * @deprecated Use `db.upgrade.createStore()` instead.
+	 *
 	 * Create and return a new object store.
 	 * @param {string} name
 	 * @param {IDBObjectStoreParameters | undefined} [opts]
@@ -310,6 +345,8 @@ export class UpgradableDatabase extends DatabaseWrapper {
 	}
 
 	/**
+	 * @deprecated Use `db.upgrade.deleteStore()` instead.
+	 *
 	 * Destroy the with the given name in the connected database.
 	 * @param {string} name
 	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/deleteObjectStore}
@@ -416,6 +453,16 @@ class Upgrader {
  * Manage connections to databases and any upgrades.
  */
 export class Database extends DatabaseWrapper {
+	/**
+	 * @override
+	 * @param {IDBDatabase} db
+	 * @returns {DatabaseWrapper}
+	 */
+	static wrap(db) {
+		super.assertWrappable(db);
+		return new DatabaseWrapper(db);
+	}
+
 	/** @type {IDBOpenDBRequest | undefined} */ #request;
 	/** @type {UpgradeState | undefined} */ #state;
 	/** @type {number | undefined} */ #version;
@@ -585,7 +632,7 @@ export class Database extends DatabaseWrapper {
 		if (!this.#state || !target.transaction)
 			throw new Error('InvalidState');
 		const tx = new UpgradeTransaction(target.transaction);
-		const db = new UpgradableDatabase(target.result);
+		const db = new UpgradableDatabase(target);
 		this.#state.db.update(db);
 		this.#state.tx.update(tx);
 	}

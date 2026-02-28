@@ -186,6 +186,20 @@ export class UpgradeTransaction extends ReadWriteTransaction {
      */
     static override wrap: (tx: IDBTransaction) => UpgradeTransaction;
     /**
+     * Create and return a new object store.
+     * @param {string} name
+     * @param {IDBObjectStoreParameters} [opts]
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/createObjectStore}
+     */
+    createStore(name: string, opts?: IDBObjectStoreParameters): UpgradableStore;
+    /**
+     * Destroy the object store with the given name in the connected database.
+     * @param {string} name
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/deleteObjectStore}
+     */
+    deleteStore(name: string): void;
+    /**
+     * Get an access to an object store which can have indexes added or removed to it.
      * @override
      * @param {string} name
      */

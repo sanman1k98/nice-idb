@@ -5,17 +5,9 @@ export class DatabaseWrapper extends Wrapper<IDBDatabase> {
     /**
      * @override
      * @protected
+     * @type {typeof IDBDatabase | typeof IDBOpenDBRequest}
      */
-    protected static override Target: {
-        new (): IDBDatabase;
-        prototype: IDBDatabase;
-    };
-    /**
-     * Wrap an existing database connection.
-     * @override
-     * @param {IDBDatabase} db
-     */
-    static override wrap(db: IDBDatabase): DatabaseWrapper;
+    protected static override Target: typeof IDBDatabase | typeof IDBOpenDBRequest;
     /**
      * Compares two values as keys to determine equality and ordering for IndexedDB operations.
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/cmp}
@@ -193,13 +185,48 @@ export class DatabaseWrapper extends Wrapper<IDBDatabase> {
  */
 export class UpgradableDatabase extends DatabaseWrapper {
     /**
-     * Wrap an IDBDatabase within an "upgrade transaction" that can be used to
-     * modify the structure of the underlying database.
      * @override
-     * @param {IDBDatabase} db
+     * @protected
      */
-    static override wrap(db: IDBDatabase): UpgradableDatabase;
+    protected static override Target: {
+        new (): IDBOpenDBRequest;
+        prototype: IDBOpenDBRequest;
+    };
     /**
+     * @override
+     * @param {unknown} value
+     * @returns {value is IDBOpenDBRequest & { transaction: IDBTransaction }}
+     */
+    static override isWrappable(value: unknown): value is IDBOpenDBRequest & {
+        transaction: IDBTransaction;
+    };
+    /**
+     * @override
+     * @param {unknown} value
+     * @returns {asserts value is IDBOpenDBRequest & { transaction: IDBTransaction }}
+     */
+    static override assertWrappable(value: unknown): asserts value is IDBOpenDBRequest & {
+        transaction: IDBTransaction;
+    };
+    /**
+     * Accepts an open request with an active "upgrade transaction".
+     * @override
+     * @param {IDBOpenDBRequest} req
+     */
+    static override wrap(req: IDBOpenDBRequest): UpgradableDatabase;
+    /**
+     * @param {IDBOpenDBRequest} req A request to open a database.
+     */
+    constructor(req: IDBOpenDBRequest);
+    /**
+     * Wrapped "upgrade transaction" which can modify the structure of the
+     * connected database.
+     * @type {UpgradeTransaction}
+     */
+    upgrade: UpgradeTransaction;
+    /**
+     * @deprecated Use `db.upgrade.createStore()` instead.
+     *
      * Create and return a new object store.
      * @param {string} name
      * @param {IDBObjectStoreParameters | undefined} [opts]
@@ -207,6 +234,8 @@ export class UpgradableDatabase extends DatabaseWrapper {
      */
     createStore(name: string, opts?: IDBObjectStoreParameters | undefined): UpgradableStore;
     /**
+     * @deprecated Use `db.upgrade.deleteStore()` instead.
+     *
      * Destroy the with the given name in the connected database.
      * @param {string} name
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/deleteObjectStore}
@@ -217,6 +246,12 @@ export class UpgradableDatabase extends DatabaseWrapper {
  * Manage connections to databases and any upgrades.
  */
 export class Database extends DatabaseWrapper {
+    /**
+     * @override
+     * @param {IDBDatabase} db
+     * @returns {DatabaseWrapper}
+     */
+    static override wrap(db: IDBDatabase): DatabaseWrapper;
     /**
      * Create a new instance to manage a connection to a database with the given name.
      * @param {string} name
@@ -335,7 +370,7 @@ import { ReadOnlyTransaction } from './tx.js';
 import { ReadWriteTransaction } from './tx.js';
 import { ReadOnlyStore } from './store.js';
 import { ReadWriteStore } from './store.js';
+import { UpgradeTransaction } from './tx.js';
 import { UpgradableStore } from './store.js';
 import type { RegisterUpgrade } from '#types';
-import { UpgradeTransaction } from './tx.js';
 //# sourceMappingURL=db.d.ts.map
