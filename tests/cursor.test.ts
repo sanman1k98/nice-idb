@@ -8,7 +8,7 @@ describe('cursors', () => {
 		beforeAll(async () => {
 			testDB = Database.init('test-data').define((version, db) => {
 				version(1, async () => {
-					const data = db.createStore('data', { autoIncrement: true });
+					const data = db.upgrade.createStore('data', { autoIncrement: true });
 					for (let i = 1; i <= 10; i++)
 						await data.add(i);
 				});
@@ -104,7 +104,7 @@ describe('cursors', () => {
 		beforeAll(async () => {
 			testDB = Database.init('test-data').define((version, db) => {
 				version(1, async () => {
-					const data = db.createStore('data', { autoIncrement: true });
+					const data = db.upgrade.createStore('data', { autoIncrement: true });
 					for (let i = 1; i <= 10; i++)
 						await data.add(i);
 				});

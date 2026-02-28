@@ -35,7 +35,7 @@ describe('defining upgrades', () => {
 		it('can define the structure of a new database', async () => {
 			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
-					const logs = db.createStore('logs', { autoIncrement: true });
+					const logs = db.upgrade.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
 					await logs.add({ type: 'info', message: 'Hello, World!' });
 				});
@@ -79,7 +79,7 @@ describe('defining upgrades', () => {
 			const existingDB = Database.init('test-db')
 				.define((version, db) => {
 					version(1, async () => {
-						const logs = db.createStore('logs', { autoIncrement: true });
+						const logs = db.upgrade.createStore('logs', { autoIncrement: true });
 						logs.createIndex('types', 'type');
 						await logs.add({ type: 'info', message: 'Hello, World!' });
 					});
@@ -99,7 +99,7 @@ describe('defining upgrades', () => {
 
 			testDB.define((version, db) => {
 				version(1, callback = vi.fn(async () => {
-					const logs = db.createStore('logs', { autoIncrement: true });
+					const logs = db.upgrade.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
 					await logs.add({ type: 'info', message: 'Hello, World!' });
 				}));
@@ -141,7 +141,7 @@ describe('defining upgrades', () => {
 		it('will abort an upgrade if an error is thrown', async () => {
 			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
-					const logs = db.createStore('logs', { autoIncrement: true });
+					const logs = db.upgrade.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
 					await logs.add({ type: 'info', message: 'Hello, World!' });
 					throw new Error('SomeError');
@@ -155,7 +155,7 @@ describe('defining upgrades', () => {
 		it('supports manually committing at the end of an upgrade', async () => {
 			const db = Database.init('test-db').define((version, db, tx) => {
 				version(1, async () => {
-					const logs = db.createStore('logs', { autoIncrement: true });
+					const logs = db.upgrade.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
 					await logs.add({ type: 'info', message: 'Hello, World!' });
 					tx.commit();
@@ -181,7 +181,7 @@ describe('defining upgrades', () => {
 		it('can unexpectedly yield control when awaiting', async () => {
 			const db = Database.init('test-db').define((version, db) => {
 				version(1, async () => {
-					const logs = db.createStore('logs', { autoIncrement: true });
+					const logs = db.upgrade.createStore('logs', { autoIncrement: true });
 					logs.createIndex('types', 'type');
 					// WARN: awaiting a task can preempt the "upgradeneeded" event handler.
 					await delay(1);
