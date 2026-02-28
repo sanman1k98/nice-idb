@@ -85,7 +85,7 @@ async function example1() {
 	}
 
 	{
-		// Handle request errors with a Promise=like interface.
+		// Handle request errors with a Promise-like interface.
 
 		const tx = db.transaction('books', 'readwrite');
 		const store = tx.store('books');
